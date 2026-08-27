@@ -1,0 +1,1944 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SCIENCE ZERO: สร้างโลกจากศูนย์</title>
+<style>
+  :root{
+    --ink:#1c2b23;
+    --parchment:#eee3c8;
+    --moss:#3f6b4a;
+    --moss-dark:#274633;
+    --ember:#e08a3e;
+    --ember-dark:#a85a1f;
+    --sky-day:#bcd8c9;
+    --sky-night:#0c1420;
+    --panel:#22301f;
+    --panel-light:#31432b;
+    --accent:#f2c14e;
+    --danger:#c1483f;
+    --water:#3a7d9c;
+    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none;}
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0c1420;color:var(--parchment);}
+  #game{position:relative;width:100vw;height:100vh;overflow:hidden;}
+  canvas{display:block;position:absolute;top:0;left:0;}
+
+  /* ---------- MAIN MENU ---------- */
+  #mainMenu{
+    position:absolute;inset:0;z-index:50;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:#0d1710;
+    text-align:center;
+    overflow:hidden;
+  }
+  #menuBgCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:0;}
+  #mainMenu::after{
+    content:'';position:absolute;inset:0;z-index:1;pointer-events:none;
+    background:radial-gradient(ellipse at 50% 38%, rgba(10,16,10,0) 0%, rgba(6,10,6,.55) 72%, rgba(4,7,4,.8) 100%);
+  }
+  #mainMenu > *:not(#menuBgCanvas){position:relative;z-index:2;}
+  #mainMenu h1{
+    font-size:clamp(2.6rem,7.5vw,4.6rem);letter-spacing:4px;color:var(--accent);
+    text-shadow:0 0 22px rgba(242,193,78,.5), 0 4px 0 #5c3a12, 0 0 60px rgba(120,200,140,.35);
+    margin:0;font-family:'Georgia',serif;
+  }
+  #mainMenu .sub{color:var(--parchment);opacity:.85;margin-top:6px;font-size:clamp(1rem,3vw,1.3rem);letter-spacing:2px;}
+  #mainMenu .crack{width:120px;height:3px;background:linear-gradient(90deg,transparent,var(--ember),transparent);margin:22px 0;}
+  .menuBtns{display:flex;flex-direction:column;gap:12px;width:min(320px,80vw);}
+  .menuBtns button{
+    padding:14px 18px;border-radius:10px;border:2px solid var(--ember-dark);
+    background:linear-gradient(180deg,var(--panel-light),var(--panel));
+    color:var(--parchment);font-size:1.05rem;letter-spacing:1px;cursor:pointer;
+    transition:transform .12s, background .12s;
+  }
+  .menuBtns button:hover{transform:translateY(-2px);background:var(--moss);}
+  .menuBtns button:active{transform:translateY(0);}
+  #mainMenu .credit{margin-top:26px;font-size:.75rem;opacity:.5;}
+
+  /* ---------- INTRO CUTSCENE ---------- */
+  #introScreen{position:absolute;inset:0;z-index:55;display:none;background:#000;overflow:hidden;}
+  #introScreen.show{display:block;}
+  #introCanvas{position:absolute;top:0;left:0;width:100%;height:100%;}
+  #introTextWrap{position:absolute;left:0;right:0;bottom:12%;display:flex;justify-content:center;padding:0 20px;pointer-events:none;}
+  #introText{
+    max-width:720px;text-align:center;color:#f4ecd8;font-size:clamp(1rem,2.6vw,1.5rem);line-height:1.8;
+    text-shadow:0 2px 10px #000, 0 0 20px #000; letter-spacing:.5px; min-height:3.6em;
+  }
+  #introSkip{
+    position:absolute;top:16px;right:16px;z-index:56;background:#0007;border:1px solid #ffffff44;
+    color:#eee;padding:8px 14px;border-radius:20px;font-size:.8rem;cursor:pointer;
+  }
+  #introContinue{
+    position:absolute;left:50%;bottom:6%;transform:translateX(-50%);z-index:56;display:none;
+    background:linear-gradient(180deg,var(--panel-light),var(--panel));border:2px solid var(--accent);
+    color:var(--parchment);padding:10px 26px;border-radius:24px;cursor:pointer;letter-spacing:1px;
+  }
+  #introContinue.show{display:block;}
+
+  /* ---------- HUD ---------- */
+  #hud{position:absolute;top:0;left:0;right:0;z-index:20;display:none;padding:8px 10px;pointer-events:none;}
+  #hud.show{display:block;}
+  .statBar{display:flex;align-items:center;gap:6px;margin-bottom:4px;pointer-events:auto;}
+  .statBar .label{width:20px;text-align:center;font-size:.9rem;}
+  .barOuter{flex:1;max-width:220px;height:12px;border-radius:6px;background:#1b1f14;border:1px solid #0006;overflow:hidden;}
+  .barInner{height:100%;transition:width .3s;}
+  #hp .barInner{background:linear-gradient(90deg,#c1483f,#e0685f);}
+  #hunger .barInner{background:linear-gradient(90deg,#a06a2e,#e0a13e);}
+  #thirst .barInner{background:linear-gradient(90deg,#2b6b8a,#5db3d9);}
+  #temp .barInner{background:linear-gradient(90deg,#3a7d9c,#e08a3e);}
+  #topRight{position:absolute;top:8px;right:10px;display:flex;flex-direction:column;align-items:flex-end;gap:2px;pointer-events:auto;}
+  #clock{background:#0008;padding:4px 10px;border-radius:8px;font-size:.85rem;letter-spacing:1px;}
+  #weatherTag{background:#0008;padding:2px 10px;border-radius:8px;font-size:.75rem;}
+  #missionBanner{
+    position:absolute;top:70px;left:10px;max-width:260px;background:#0009;border-left:3px solid var(--accent);
+    padding:6px 10px;border-radius:6px;font-size:.78rem;pointer-events:auto;display:none;
+  }
+  #missionBanner.show{display:block;}
+  #friendTracker{
+    position:absolute;top:70px;right:10px;background:#0009;border-left:3px solid #8fe08a;
+    padding:6px 10px;border-radius:6px;font-size:.78rem;pointer-events:auto;display:none;text-align:right;
+  }
+  #friendTracker.show{display:block;}
+
+  /* ---------- BOTTOM BAR ---------- */
+  #bottomBar{position:absolute;bottom:0;left:0;right:0;z-index:20;display:none;
+    justify-content:center;gap:8px;padding:8px 8px 10px;pointer-events:none;flex-wrap:wrap;}
+  #bottomBar.show{display:flex;}
+  .actionBtn{
+    pointer-events:auto;background:linear-gradient(180deg,var(--panel-light),var(--panel));
+    border:2px solid var(--ember-dark);color:var(--parchment);border-radius:12px;
+    padding:8px 12px;font-size:1.15rem;min-width:52px;text-align:center;cursor:pointer;
+  }
+  .actionBtn small{display:block;font-size:.55rem;letter-spacing:1px;margin-top:2px;opacity:.85;}
+  .actionBtn:active{transform:scale(.94);background:var(--moss);}
+  .actionBtn.pulse{animation:pulseGlow 1.1s infinite;}
+  @keyframes pulseGlow{0%,100%{box-shadow:0 0 0 rgba(242,193,78,0)}50%{box-shadow:0 0 12px rgba(242,193,78,.7)}}
+
+  /* ---------- TOUCH MOVE PAD ---------- */
+  #padWrap{position:absolute;left:14px;bottom:96px;z-index:19;width:120px;height:120px;display:none;}
+  #padWrap.show{display:block;}
+  .padBtn{position:absolute;width:40px;height:40px;background:#0007;border:2px solid var(--ember-dark);
+    border-radius:8px;color:#fff;font-size:1.1rem;display:flex;align-items:center;justify-content:center;}
+  .padBtn:active{background:var(--moss);}
+  #padUp{top:0;left:40px;} #padDown{bottom:0;left:40px;} #padLeft{top:40px;left:0;} #padRight{top:40px;right:0;}
+  #runToggle{position:absolute;right:14px;bottom:96px;z-index:19;display:none;
+    background:#0007;border:2px solid var(--ember-dark);border-radius:50%;width:56px;height:56px;
+    color:#fff;font-size:1.3rem;align-items:center;justify-content:center;}
+  #runToggle.show{display:flex;}
+  #runToggle.active{background:var(--ember-dark);}
+
+  /* ---------- PANELS ---------- */
+  .panel{
+    position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;
+    background:rgba(6,10,7,.72);backdrop-filter:blur(2px);
+  }
+  .panel.show{display:flex;}
+  .panelBox{
+    width:min(560px,92vw);max-height:86vh;overflow-y:auto;background:var(--panel);
+    border:2px solid var(--ember-dark);border-radius:14px;padding:16px 16px 20px;
+  }
+  .panelBox h2{margin:0 0 4px;color:var(--accent);letter-spacing:1px;font-size:1.3rem;
+    border-bottom:1px solid #ffffff22;padding-bottom:8px;}
+  .panelBox .closeX{float:right;cursor:pointer;background:var(--panel-light);border:1px solid var(--ember-dark);
+    border-radius:8px;padding:4px 10px;color:var(--parchment);}
+  .tabRow{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap;}
+  .tabBtn{background:var(--panel-light);border:1px solid var(--ember-dark);color:var(--parchment);
+    padding:6px 10px;border-radius:8px;font-size:.8rem;cursor:pointer;}
+  .tabBtn.active{background:var(--moss);border-color:var(--accent);}
+  .itemGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:8px;margin-top:8px;}
+  .craftCard{background:var(--panel-light);border:1px solid #ffffff22;border-radius:10px;padding:8px 6px;
+    text-align:center;cursor:pointer;font-size:.72rem;}
+  .craftCard .ic{font-size:1.6rem;}
+  .craftCard.locked{opacity:.45;cursor:not-allowed;}
+  .craftCard .cost{font-size:.62rem;opacity:.8;margin-top:2px;}
+  .craftCard:not(.locked):active{transform:scale(.95);}
+  .invRow{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .invChip{background:var(--panel-light);border:1px solid #ffffff22;border-radius:8px;padding:5px 9px;font-size:.78rem;}
+  .buildOpt{display:flex;justify-content:space-between;align-items:center;background:var(--panel-light);
+    border:1px solid #ffffff22;border-radius:10px;padding:8px 10px;margin-bottom:6px;font-size:.8rem;}
+  .buildOpt button{background:var(--moss);border:1px solid var(--accent);color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;}
+  .buildOpt button:disabled{opacity:.4;background:#333;border-color:#555;}
+  .missionItem{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;font-size:.85rem;}
+  .missionItem .chk{width:20px;height:20px;border-radius:5px;border:2px solid var(--accent);flex:0 0 20px;
+    display:flex;align-items:center;justify-content:center;font-size:.8rem;}
+  .missionItem.done .chk{background:var(--moss);}
+  .missionItem.done{opacity:.6;text-decoration:line-through;}
+  .techEra{margin-bottom:14px;}
+  .techEra h3{color:var(--accent);font-size:.9rem;margin:0 0 6px;border-left:3px solid var(--ember);padding-left:8px;}
+  .techPill{display:inline-block;background:var(--panel-light);border:1px solid #ffffff22;border-radius:20px;
+    padding:4px 10px;margin:3px 4px 0 0;font-size:.72rem;}
+  .techPill.unlocked{border-color:var(--accent);background:var(--moss);}
+  .expRow{display:flex;gap:8px;align-items:center;background:var(--panel-light);border-radius:10px;padding:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .expRow select{background:#11170f;color:var(--parchment);border:1px solid #ffffff33;border-radius:6px;padding:4px;}
+  .expRow button{background:var(--ember-dark);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;}
+  .switchRow{display:flex;gap:10px;justify-content:center;margin:14px 0;}
+  .switchBtn{width:56px;height:56px;border-radius:10px;background:#11170f;border:2px solid #ffffff33;
+    color:#fff;font-size:1.4rem;cursor:pointer;}
+  .switchBtn.on{background:var(--accent);color:#111;border-color:var(--accent);}
+  #toastLog{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:60;display:flex;
+    flex-direction:column;gap:6px;pointer-events:none;align-items:center;}
+  .toast{background:#0c1420ee;border:1px solid var(--accent);color:var(--parchment);padding:6px 14px;
+    border-radius:20px;font-size:.8rem;opacity:0;animation:toastIn .3s forwards, toastOut .4s forwards 2.4s;white-space:nowrap;}
+  @keyframes toastIn{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes toastOut{to{opacity:0;transform:translateY(-8px);}}
+  #endScreen{position:absolute;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at center,#1c2b23,#050705 80%);text-align:center;flex-direction:column;padding:20px;}
+  #endScreen.show{display:flex;}
+  #endScreen p{white-space:pre-line;font-size:clamp(1rem,2.6vw,1.4rem);color:var(--accent);line-height:1.9;
+    text-shadow:0 0 12px rgba(242,193,78,.4);}
+  .smallNote{font-size:.72rem;opacity:.7;margin-top:6px;}
+</style>
+</head>
+<body>
+<div id="game">
+  <canvas id="worldCanvas"></canvas>
+  <canvas id="fxCanvas"></canvas>
+
+  <!-- MAIN MENU -->
+  <div id="mainMenu">
+    <canvas id="menuBgCanvas"></canvas>
+    <h1>SCIENCE ZERO</h1>
+    <div class="sub">สร้างโลกจากศูนย์</div>
+    <div class="crack"></div>
+    <div class="menuBtns">
+      <button id="btnStart">เริ่มเกม</button>
+      <button id="btnHow">วิธีเล่น</button>
+      <button id="btnTechMenu">เทคโนโลยี</button>
+      <button id="btnAbout">เกี่ยวกับเกม</button>
+    </div>
+    <div class="credit">ตัวละครและโลกในเกมเป็นผลงานต้นฉบับ ไม่เกี่ยวข้องกับผลงานลิขสิทธิ์ใด ๆ</div>
+  </div>
+
+  <!-- INTRO CUTSCENE -->
+  <div id="introScreen">
+    <canvas id="introCanvas"></canvas>
+    <div id="introSkip">ข้าม ▶▶</div>
+    <div id="introTextWrap"><div id="introText"></div></div>
+    <div id="introContinue">ตื่นขึ้นมา ▶</div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="statBar" id="hp"><span class="label">❤️</span><div class="barOuter"><div class="barInner" style="width:100%"></div></div></div>
+    <div class="statBar" id="hunger"><span class="label">🍖</span><div class="barOuter"><div class="barInner" style="width:100%"></div></div></div>
+    <div class="statBar" id="thirst"><span class="label">💧</span><div class="barOuter"><div class="barInner" style="width:100%"></div></div></div>
+    <div class="statBar" id="temp"><span class="label">🌡️</span><div class="barOuter"><div class="barInner" style="width:60%"></div></div></div>
+  </div>
+  <div id="topRight">
+    <div id="clock">วันที่ 1 · 06:00</div>
+    <div id="weatherTag">☀️ แดดจัด</div>
+  </div>
+  <div id="missionBanner"></div>
+  <div id="friendTracker"></div>
+
+  <div id="padWrap">
+    <div class="padBtn" id="padUp">▲</div>
+    <div class="padBtn" id="padDown">▼</div>
+    <div class="padBtn" id="padLeft">◀</div>
+    <div class="padBtn" id="padRight">▶</div>
+  </div>
+  <div id="runToggle">🏃</div>
+
+  <div id="bottomBar">
+    <div class="actionBtn" id="btnGather">✋<small>เก็บ</small></div>
+    <div class="actionBtn" id="btnCraft">🛠️<small>Craft</small></div>
+    <div class="actionBtn" id="btnBuild">🏗️<small>Build</small></div>
+    <div class="actionBtn" id="btnExperiment">🧪<small>ทดลอง</small></div>
+    <div class="actionBtn" id="btnInventory">🎒<small>ของ</small></div>
+    <div class="actionBtn" id="btnMap">🗺️<small>Map</small></div>
+    <div class="actionBtn" id="btnMission">📜<small>ภารกิจ</small></div>
+  </div>
+
+  <div id="toastLog"></div>
+
+  <!-- CRAFT PANEL -->
+  <div class="panel" id="craftPanel">
+    <div class="panelBox">
+      <span class="closeX" data-close="craftPanel">ปิด ✕</span>
+      <h2>🛠️ Crafting</h2>
+      <div class="tabRow" id="craftTabs"></div>
+      <div class="itemGrid" id="craftGrid"></div>
+    </div>
+  </div>
+
+  <!-- BUILD PANEL -->
+  <div class="panel" id="buildPanel">
+    <div class="panelBox">
+      <span class="closeX" data-close="buildPanel">ปิด ✕</span>
+      <h2>🏗️ สร้างสิ่งปลูกสร้าง</h2>
+      <p class="smallNote">เลือกสิ่งปลูกสร้าง แล้วแตะบนแผนที่ใกล้ตัวละครเพื่อวาง (วางได้เฉพาะบนพื้นผิวเท่านั้น)</p>
+      <div id="buildList"></div>
+    </div>
+  </div>
+
+  <!-- EXPERIMENT PANEL -->
+  <div class="panel" id="expPanel">
+    <div class="panelBox">
+      <span class="closeX" data-close="expPanel">ปิด ✕</span>
+      <h2>🧪 โต๊ะทดลอง</h2>
+      <p class="smallNote">เลือกวัตถุดิบ 1-2 อย่าง แล้วกดทดลอง เพื่อค้นพบความรู้ใหม่</p>
+      <div class="expRow">
+        <select id="expA"></select>
+        <span>+</span>
+        <select id="expB"></select>
+        <button id="expRun">ทดลอง ▶</button>
+      </div>
+      <div id="expResult" style="margin-top:10px;font-size:.85rem;min-height:24px;"></div>
+    </div>
+  </div>
+
+  <!-- INVENTORY PANEL -->
+  <div class="panel" id="invPanel">
+    <div class="panelBox">
+      <span class="closeX" data-close="invPanel">ปิด ✕</span>
+      <h2>🎒 Inventory</h2>
+      <p class="smallNote">แตะน้ำหรือผลไม้เพื่อใช้ทันที (ดื่ม/กิน) เพื่อเติมพลัง</p>
+      <div class="invRow" id="invRow"></div>
+    </div>
+  </div>
+
+  <!-- TECH TREE PANEL -->
+  <div class="panel" id="techPanel">
+    <div class="panelBox">
+      <span class="closeX" data-close="techPanel">ปิด ✕</span>
+      <h2>🌳 Technology Tree</h2>
+      <div id="techTreeBody"></div>
+    </div>
+  </div>
+
+  <!-- MISSION PANEL -->
+  <div class="panel" id="missionPanel">
+    <div class="panelBox">
+      <span class="closeX" data-close="missionPanel">ปิด ✕</span>
+      <h2>📜 ภารกิจ</h2>
+      <div id="missionList"></div>
+    </div>
+  </div>
+
+  <!-- HOW TO PLAY -->
+  <div class="panel" id="howPanel">
+    <div class="panelBox">
+      <span class="closeX" data-close="howPanel">ปิด ✕</span>
+      <h2>วิธีเล่น</h2>
+      <p style="font-size:.85rem;line-height:1.7;">
+      • ใช้ WASD/ลูกศร หรือปุ่มทิศทางบนมือถือเพื่อเดิน กด/แตะปุ่มวิ่งเพื่อวิ่ง<br>
+      • เดินเข้าใกล้ทรัพยากรแล้วกด <b>E</b> หรือปุ่ม <b>เก็บ</b> เพื่อเก็บ<br>
+      • เดินเข้าใกล้เพื่อนที่หลับใหล แล้วกด <b>E</b>/<b>เก็บ</b> เพื่อปลุกให้ตื่น<br>
+      • เดินเข้าไปในปากถ้ำบนภูเขาเพื่อลงไปขุดแร่และคริสตัลหายาก แล้วเดินไปที่บันไดเพื่อกลับขึ้นมา<br>
+      • เปิดเมนู <b>Craft</b> เพื่อสร้างเครื่องมือและไอเทม<br>
+      • เปิดเมนู <b>Build</b> เพื่อสร้างกองไฟ/ที่พัก/โต๊ะต่าง ๆ บนแผนที่ (สร้างได้เฉพาะบนพื้นผิว)<br>
+      • ใกล้โต๊ะทดลอง เปิดเมนู <b>ทดลอง</b> เพื่อค้นคว้าเทคโนโลยีใหม่<br>
+      • เปิด <b>ของ</b> แล้วแตะน้ำ/ผลไม้เพื่อดื่ม/กินทันที คอย Hunger / Thirst ไม่ให้หมด และผิงไฟตอนกลางคืนไม่ให้ตัวเย็นเกินไป<br>
+      • ทำภารกิจในเมนู <b>ภารกิจ</b> ให้ครบ ปลุกเพื่อนที่หลับใหลทั้งหมด แล้วร่วมกันสร้าง Science Core เพื่อจบเกม
+      </p>
+    </div>
+  </div>
+
+  <!-- ABOUT -->
+  <div class="panel" id="aboutPanel">
+    <div class="panelBox">
+      <span class="closeX" data-close="aboutPanel">ปิด ✕</span>
+      <h2>เกี่ยวกับเกม</h2>
+      <p style="font-size:.85rem;line-height:1.7;">
+      SCIENCE ZERO เป็นเกม Survival + Crafting ที่ได้แรงบันดาลใจจากแนวคิด "ใช้วิทยาศาสตร์เอาชีวิตรอด"
+      ตัวละคร เนื้อเรื่อง และโลกทั้งหมดเป็นผลงานต้นฉบับที่สร้างขึ้นใหม่สำหรับเกมนี้โดยเฉพาะ
+      ไม่มีการใช้ตัวละคร ชื่อ หรือเนื้อหาจากผลงานลิขสิทธิ์อื่นใด</p>
+    </div>
+  </div>
+
+  <!-- CIRCUIT PUZZLE -->
+  <div class="panel" id="circuitPanel">
+    <div class="panelBox">
+      <span class="closeX" data-close="circuitPanel">ปิด ✕</span>
+      <h2>⚡ ประตูไฟฟ้า</h2>
+      <p class="smallNote">ต่อวงจร: กดสวิตช์ให้ครบเพื่อจ่ายไฟให้ประตู (ลองสลับจนหลอดไฟติด)</p>
+      <div class="switchRow" id="switchRow"></div>
+      <div style="text-align:center;font-size:2rem;" id="lampIcon">💡</div>
+      <div style="text-align:center;margin-top:8px;" id="circuitMsg"></div>
+    </div>
+  </div>
+
+  <!-- END SCREEN -->
+  <div id="endScreen">
+    <p id="endText"></p>
+    <button class="actionBtn" style="margin-top:20px;" onclick="location.reload()">เริ่มใหม่</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   SCIENCE ZERO — core game
+   Original characters/world. Placeholder art via canvas + emoji.
+   ============================================================ */
+
+const worldCanvas = document.getElementById('worldCanvas');
+const fxCanvas = document.getElementById('fxCanvas');
+const wctx = worldCanvas.getContext('2d');
+const fctx = fxCanvas.getContext('2d');
+
+function resize(){
+  worldCanvas.width = fxCanvas.width = window.innerWidth;
+  worldCanvas.height = fxCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ================= SEMI-REALISTIC FOREST BACKDROP ================= */
+/* Shared painterly forest renderer used by the main menu and by the
+   intro cutscene's "epochs" / "wake" phases. Pure canvas, no external
+   images, tuned to look layered/atmospheric rather than flat. */
+function seeded(seed){ let s=seed; return ()=>{ s=(s*9301+49297)%233280; return s/233280; }; }
+function makeForestLayer(seed, count){
+  const r = seeded(seed);
+  const trees=[];
+  for(let i=0;i<count;i++){
+    trees.push({ x:r(), h:0.5+r()*0.5, w:0.5+r()*0.6, lean:(r()-0.5)*0.06, swaySeed:r()*100 });
+  }
+  return trees;
+}
+const FOREST_LAYERS = [
+  {seed:11, count:9,  color:'#0e1a10', yBase:0.62, hScale:0.30, blur:false}, // farthest, darkest
+  {seed:22, count:8,  color:'#16281a', yBase:0.70, hScale:0.40, blur:false},
+  {seed:33, count:7,  color:'#203a24', yBase:0.80, hScale:0.52, blur:false}, // nearest
+];
+function drawForestTree(ctx,cx,baseY,w,h,lean,color){
+  ctx.save();
+  ctx.translate(cx,baseY);
+  ctx.rotate(lean);
+  // trunk
+  ctx.fillStyle='rgba(10,8,6,0.9)';
+  ctx.fillRect(-w*0.06,-h*0.28,w*0.12,h*0.3);
+  // layered canopy (three stacked triangles = pine-like silhouette)
+  ctx.fillStyle=color;
+  for(let i=0;i<3;i++){
+    const ty = -h*0.28 - i*h*0.24;
+    const tw = w*(1 - i*0.22);
+    ctx.beginPath();
+    ctx.moveTo(0, ty - h*0.34);
+    ctx.lineTo(-tw*0.5, ty);
+    ctx.lineTo(tw*0.5, ty);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+function drawForestBackdrop(ctx,w,h,t,opts){
+  opts = opts||{};
+  const rayHue = opts.rayHue || '150,255,170'; // green light, no gold
+  const mistColor = opts.mistColor || '190,215,195';
+  // sky gradient - deep green-black canopy light, not flat
+  const sky = ctx.createLinearGradient(0,0,0,h);
+  sky.addColorStop(0, opts.skyTop || '#0a130c');
+  sky.addColorStop(0.55, opts.skyMid || '#122015');
+  sky.addColorStop(1, opts.skyBot || '#1a2c1c');
+  ctx.fillStyle=sky; ctx.fillRect(0,0,w,h);
+
+  // soft animated god-rays filtering through canopy (green, not gold)
+  ctx.save();
+  ctx.globalCompositeOperation='lighter';
+  const rayCount = opts.rayCount||5;
+  for(let i=0;i<rayCount;i++){
+    const baseX = w*((i+0.5)/rayCount);
+    const drift = Math.sin(t*0.00025 + i*1.7)*w*0.05;
+    const sway = Math.sin(t*0.0006 + i*2.3)*0.06;
+    const rg = ctx.createLinearGradient(baseX+drift,0,baseX+drift+w*0.18,h);
+    rg.addColorStop(0, `rgba(${rayHue},${0.16+0.05*Math.sin(t*0.0009+i)})`);
+    rg.addColorStop(0.6, `rgba(${rayHue},0.05)`);
+    rg.addColorStop(1, `rgba(${rayHue},0)`);
+    ctx.save();
+    ctx.translate(baseX+drift, 0);
+    ctx.rotate(0.12+sway);
+    ctx.fillStyle=rg;
+    ctx.fillRect(-w*0.05, -h*0.05, w*0.16, h*1.2);
+    ctx.restore();
+  }
+  ctx.restore();
+
+  // drifting dust / pollen motes inside the light
+  ctx.fillStyle=`rgba(${mistColor},0.5)`;
+  const moteR = seeded(777);
+  for(let i=0;i<36;i++){
+    const mx = (moteR()*w + Math.sin(t*0.0004+i)*30) % w;
+    const my = (moteR()*h + (t*0.01*(0.3+moteR()))%h) % h;
+    ctx.globalAlpha = 0.15+0.25*Math.sin(t*0.001+i);
+    ctx.beginPath(); ctx.arc(mx,my,1.3,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+
+  // parallax tree layers, back to front
+  FOREST_LAYERS.forEach((layer,li)=>{
+    const trees = layer._cache || (layer._cache = makeForestLayer(layer.seed, layer.count));
+    const baseY = h*layer.yBase;
+    const sway = Math.sin(t*0.0003 + li)*0.01;
+    trees.forEach(tr=>{
+      const treeSway = Math.sin(t*0.0007 + tr.swaySeed)*0.02;
+      const cx = tr.x*w*1.15 - w*0.075;
+      drawForestTree(ctx, cx, baseY, w*layer.hScale*tr.w*0.55, h*layer.hScale*tr.h, tr.lean+sway+treeSway, layer.color);
+    });
+  });
+
+  // ground mist
+  const mist = ctx.createLinearGradient(0,h*0.78,0,h);
+  mist.addColorStop(0, `rgba(${mistColor},0)`);
+  mist.addColorStop(1, `rgba(${mistColor},0.22)`);
+  ctx.fillStyle=mist; ctx.fillRect(0,h*0.7,w,h*0.3);
+}
+
+/* main-menu forest canvas loop (runs only while menu is visible) */
+const menuBgCanvas = document.getElementById('menuBgCanvas');
+const mctx = menuBgCanvas.getContext('2d');
+let menuBgRunning = true;
+function resizeMenuBg(){ menuBgCanvas.width = menuBgCanvas.offsetWidth; menuBgCanvas.height = menuBgCanvas.offsetHeight; }
+window.addEventListener('resize', resizeMenuBg);
+function menuBgLoop(now){
+  if(!menuBgRunning) return;
+  if(menuBgCanvas.width!==menuBgCanvas.offsetWidth || menuBgCanvas.height!==menuBgCanvas.offsetHeight) resizeMenuBg();
+  drawForestBackdrop(mctx, menuBgCanvas.width, menuBgCanvas.height, now, {rayCount:6});
+  requestAnimationFrame(menuBgLoop);
+}
+resizeMenuBg();
+requestAnimationFrame(menuBgLoop);
+
+/* ================= SOUND ENGINE (procedural, no external files) ================= */
+let actx = null;
+function initAudio(){
+  if(actx) return;
+  try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ actx=null; }
+}
+function noiseBuffer(dur){
+  const sr = actx.sampleRate, n = Math.floor(sr*dur);
+  const buf = actx.createBuffer(1, n, sr);
+  const d = buf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/n, 1.5);
+  return buf;
+}
+// short brittle "crack" snap - filtered noise burst
+function playCrackSound(vol){
+  if(!actx) return;
+  vol = vol==null?1:vol;
+  const src = actx.createBufferSource();
+  src.buffer = noiseBuffer(0.18);
+  const bp = actx.createBiquadFilter();
+  bp.type='bandpass'; bp.frequency.value = 2200+Math.random()*1400; bp.Q.value=2.2;
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.55*vol, actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+0.16);
+  src.connect(bp); bp.connect(g); g.connect(actx.destination);
+  src.start();
+  // a couple of tiny secondary snaps for texture
+  for(let i=0;i<2;i++){
+    const s2 = actx.createBufferSource();
+    s2.buffer = noiseBuffer(0.05);
+    const bp2 = actx.createBiquadFilter();
+    bp2.type='highpass'; bp2.frequency.value=3000+Math.random()*2000;
+    const g2 = actx.createGain();
+    const t0 = actx.currentTime + 0.03 + i*0.05 + Math.random()*0.03;
+    g2.gain.setValueAtTime(0.28*vol, t0);
+    g2.gain.exponentialRampToValueAtTime(0.001, t0+0.06);
+    s2.connect(bp2); bp2.connect(g2); g2.connect(actx.destination);
+    s2.start(t0);
+  }
+}
+// low heavy "turning to stone" thud
+function playStoneThud(vol){
+  if(!actx) return;
+  vol = vol==null?1:vol;
+  const osc = actx.createOscillator();
+  osc.type='sine';
+  osc.frequency.setValueAtTime(120, actx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(45, actx.currentTime+0.35);
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.001, actx.currentTime);
+  g.gain.linearRampToValueAtTime(0.5*vol, actx.currentTime+0.02);
+  g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+0.5);
+  osc.connect(g); g.connect(actx.destination);
+  osc.start(); osc.stop(actx.currentTime+0.55);
+  // gritty stone-scrape texture layered on top
+  const src = actx.createBufferSource();
+  src.buffer = noiseBuffer(0.3);
+  const lp = actx.createBiquadFilter();
+  lp.type='lowpass'; lp.frequency.value=900;
+  const g2 = actx.createGain();
+  g2.gain.setValueAtTime(0.35*vol, actx.currentTime);
+  g2.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+0.3);
+  src.connect(lp); lp.connect(g2); g2.connect(actx.destination);
+  src.start();
+}
+
+/* ---------------- CONFIG ---------------- */
+const MAP_W = 2600, MAP_H = 2000;
+const TILE = 40;
+const DAY_MS = 4*60*1000;      // 4 minutes per full day
+const NIGHT_START = 0.62, NIGHT_END = 1.0; // fraction of day
+
+const RESOURCE_DEFS = {
+  wood:{emoji:'🪵',name:'ไม้'},
+  stone:{emoji:'🪨',name:'หิน'},
+  plant:{emoji:'🌿',name:'พืช'},
+  fruit:{emoji:'🍒',name:'ผลไม้'},
+  water:{emoji:'💧',name:'น้ำ'},
+  fiber:{emoji:'🧵',name:'เส้นใย'},
+  charcoal:{emoji:'⚫',name:'ถ่าน'},
+  ore:{emoji:'🟤',name:'แร่โลหะ'},
+  sand:{emoji:'🟨',name:'ทราย'},
+  metal:{emoji:'⚙️',name:'วัสดุโลหะ'},
+  glass:{emoji:'🔷',name:'แก้ว'},
+  crystal:{emoji:'🔮',name:'คริสตัลถ้ำ'},
+};
+/* per-resource accent color (as "r,g,b") used to make gather nodes read
+   clearly at a glance instead of all sharing the same warm glow */
+const NODE_COLORS = {
+  wood:'168,110,58', stone:'173,178,184', plant:'96,199,102', fruit:'233,79,99',
+  water:'70,177,232', fiber:'214,178,64', charcoal:'150,150,158', ore:'224,142,79',
+  sand:'230,198,110', metal:'150,178,214', glass:'103,224,235', crystal:'190,120,235',
+};
+
+const BIOMES = [
+  {name:'FOREST', color:'#2e4a30', x:0,y:0,w:1100,h:1100, res:['wood','plant','fruit','water','fiber']},
+  {name:'MOUNTAIN', color:'#4a463d', x:1100,y:0,w:1500,h:900, res:['stone','ore','wood']},
+  {name:'RUINED_CITY', color:'#3a3a3a', x:0,y:1100,w:1000,h:900, res:['metal','stone','ore']},
+  {name:'ABANDONED_FACTORY', color:'#332e3a', x:1000,y:1350,w:900,h:650, res:['metal','ore','glass']},
+  {name:'COAST', color:'#2b4a52', x:1900,y:900,w:700,h:1100, res:['sand','water','fiber']},
+];
+
+/* ---------------- CAVE CONFIG ---------------- */
+const CAVE_W = 1400, CAVE_H = 1000;
+const CAVE_ENTRANCES = [
+  {x:1380, y:260, hinted:false},
+  {x:2180, y:640, hinted:false},
+];
+const CAVE_EXIT = {x:CAVE_W/2, y:90};
+
+/* ---------------- SLEEPING FRIENDS ---------------- */
+const FRIENDS = [
+  {id:0, name:'มินท์', x:300, y:860, awake:false},
+  {id:1, name:'ตะวัน', x:1750, y:230, awake:false},
+  {id:2, name:'ป่าน', x:560, y:1780, awake:false},
+];
+
+/* ---------------- STATE ---------------- */
+const S = {
+  started:false,
+  player:{x:600,y:600,speed:2.6,run:false,facing:1,vx:0,vy:0},
+  cam:{x:0,y:0},
+  keys:{},
+  elapsed:0, day:1,
+  weather:'sun', weatherTimer:0,
+  stats:{hp:100, hunger:100, thirst:100, temp:70}, // temp in arbitrary 0-100 (50=comfortable)
+  inventory:{},
+  unlockedTech:new Set(['fire','tools_stone','shelter_basic','rope']),
+  buildings:[],
+  nodes:[],
+  wokenFriends:0,
+  counters:{waterDrunk:0, foodEaten:0, enteredCave:false},
+  cave:{active:false, nodes:[], returnX:600, returnY:600},
+  missionIndex:0,
+  gameOver:false,
+  circuitDoorSolved:false,
+  activeExpTable:null,
+};
+
+const TECH_TREE = [
+  {era:'ยุคที่ 1: BASIC SURVIVAL', items:[
+    {id:'fire',name:'ไฟ'},{id:'rope',name:'เชือก'},{id:'tools_stone',name:'เครื่องมือหิน'},{id:'shelter_basic',name:'ที่พัก'}
+  ]},
+  {era:'ยุคที่ 2: MATERIAL', items:[
+    {id:'furnace',name:'เตา'},{id:'charcoal_tech',name:'ถ่าน'},{id:'metal_tech',name:'โลหะ'},{id:'glass_tech',name:'แก้ว'}
+  ]},
+  {era:'ยุคที่ 3: ELECTRICITY', items:[
+    {id:'electricity',name:'ไฟฟ้า'},{id:'battery',name:'แบตเตอรี่'},{id:'wiring',name:'สายไฟ'},
+    {id:'lamp_tech',name:'หลอดไฟ'},{id:'generator',name:'เครื่องกำเนิดไฟฟ้า'}
+  ]},
+  {era:'ยุคที่ 4: MACHINE', items:[
+    {id:'motor',name:'มอเตอร์'},{id:'machine',name:'เครื่องจักร'},{id:'automation',name:'ระบบอัตโนมัติ'}
+  ]},
+  {era:'ยุคที่ 5: ADVANCED SCIENCE', items:[
+    {id:'comms',name:'ระบบสื่อสาร'},{id:'science_core',name:'Science Core'}
+  ]},
+];
+
+const MISSIONS = [
+  {id:1, text:'ตื่นขึ้นมาท่ามกลางซากปรักหักพัง เก็บผลไม้และน้ำเพื่อประทังชีวิต (ผลไม้ 1, น้ำ 1)', check:()=>((S.inventory.fruit||0)>=1 && (S.inventory.water||0)>=1)},
+  {id:2, text:'ดื่มน้ำและกินอาหารเพื่อฟื้นแรง (เปิดเมนู "ของ" แล้วแตะเพื่อใช้)', check:()=>(S.counters.waterDrunk>=1 && S.counters.foodEaten>=1)},
+  {id:3, text:'เก็บไม้ 10 ชิ้น และหิน 5 ชิ้น', check:()=>((S.inventory.wood||0)>=10 && (S.inventory.stone||0)>=5)},
+  {id:4, text:'สร้างกองไฟให้ความอบอุ่นก่อนพระอาทิตย์ตก', check:()=>S.buildings.some(b=>b.type==='campfire')},
+  {id:5, text:'สร้างที่พักพักผ่อน', check:()=>S.buildings.some(b=>b.type==='shelter')},
+  {id:6, text:'ตามหาและปลุกเพื่อนที่หลับใหลอยู่ทั่วโลกคนแรก', check:()=>S.wokenFriends>=1},
+  {id:7, text:'สร้างขวานหิน', check:()=>(S.inventory.stone_axe||0)>=1},
+  {id:8, text:'สร้างโต๊ะทดลอง', check:()=>S.buildings.some(b=>b.type==='exptable')},
+  {id:9, text:'ลงถ้ำบนภูเขาเพื่อสำรวจและขุดแร่โลหะ', check:()=>S.counters.enteredCave && (S.inventory.ore||0)>=1},
+  {id:10, text:'ปลุกเพื่อนคนที่สอง', check:()=>S.wokenFriends>=2},
+  {id:11, text:'ค้นพบเทคโนโลยีใหม่จากการทดลอง', check:()=>S.unlockedTech.has('charcoal_tech')||S.unlockedTech.has('glass_tech')||S.unlockedTech.has('metal_tech')},
+  {id:12, text:'ค้นพบหลักการไฟฟ้า', check:()=>S.unlockedTech.has('electricity')},
+  {id:13, text:'ปลุกเพื่อนคนสุดท้ายให้ครบทั้งหมด', check:()=>S.wokenFriends>=3},
+  {id:14, text:'เปิดใช้งานโรงงานเก่า (สร้างโรงงาน)', check:()=>S.buildings.some(b=>b.type==='factory')},
+  {id:15, text:'รวมพลังกับเพื่อนทุกคน สร้าง Science Core', check:()=>S.buildings.some(b=>b.type==='sciencecore')},
+];
+
+const CRAFT_RECIPES = {
+  TOOLS:[
+    {id:'stone_axe', name:'ขวานหิน', emoji:'🪓', cost:{wood:2,stone:2}, tech:'tools_stone'},
+    {id:'shovel', name:'พลั่ว', emoji:'⛏️', cost:{wood:2,stone:3}, tech:'tools_stone'},
+    {id:'knife', name:'มีด', emoji:'🔪', cost:{stone:2,wood:1}, tech:'tools_stone'},
+    {id:'hammer', name:'ค้อน', emoji:'🔨', cost:{wood:3,metal:1}, tech:'metal_tech'},
+    {id:'pickaxe', name:'อีเต้า', emoji:'⛏️', cost:{wood:2,stone:4}, tech:'tools_stone'},
+  ],
+  SURVIVAL:[
+    {id:'rope_item', name:'เชือก', emoji:'🧵', cost:{wood:1,fiber:2}, tech:'rope'},
+    {id:'water_container', name:'ภาชนะเก็บน้ำ', emoji:'🪣', cost:{clay:0,wood:2,fiber:1}, tech:'tools_stone'},
+  ],
+  SCIENCE:[
+    {id:'exp_tools', name:'เครื่องมือทดลอง', emoji:'🧫', cost:{metal:1,glass:1}, tech:'furnace'},
+  ],
+  TECHNOLOGY:[
+    {id:'battery_item', name:'แบตเตอรี่', emoji:'🔋', cost:{metal:2,glass:1}, tech:'battery'},
+    {id:'wire_item', name:'สายไฟ', emoji:'🔌', cost:{metal:2}, tech:'wiring'},
+    {id:'lamp_item', name:'หลอดไฟ', emoji:'💡', cost:{glass:1,metal:1}, tech:'lamp_tech'},
+  ],
+};
+
+const BUILD_OPTIONS = [
+  {type:'campfire', name:'กองไฟ', emoji:'🔥', cost:{wood:4,stone:2}, tech:'fire'},
+  {type:'shelter', name:'ที่พัก', emoji:'⛺', cost:{wood:8,fiber:4}, tech:'shelter_basic'},
+  {type:'crafttable', name:'โต๊ะ Craft', emoji:'🧰', cost:{wood:6,stone:2}, tech:'tools_stone'},
+  {type:'exptable', name:'โต๊ะทดลอง', emoji:'🧪', cost:{wood:6,stone:4}, tech:'tools_stone'},
+  {type:'furnace_b', name:'เตา', emoji:'🏺', cost:{stone:8}, tech:'furnace', unlocks:'furnace'},
+  {type:'lab', name:'ห้องทดลอง', emoji:'🔬', cost:{wood:10,metal:4,glass:2}, tech:'electricity'},
+  {type:'factory', name:'โรงงาน', emoji:'🏭', cost:{metal:10,stone:10}, tech:'machine'},
+  {type:'sciencecore', name:'Science Core', emoji:'🏛️', cost:{metal:15,glass:10,ore:5,crystal:3}, tech:'comms'},
+];
+
+/* ---------------- MAP RESOURCE NODES ---------------- */
+function biomeAt(x,y){
+  for(const b of BIOMES){ if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h) return b; }
+  return BIOMES[0];
+}
+function spawnNodes(){
+  S.nodes = [];
+  let id=0;
+  for(const b of BIOMES){
+    const count = Math.floor((b.w*b.h)/26000);
+    for(let i=0;i<count;i++){
+      const type = b.res[Math.floor(Math.random()*b.res.length)];
+      const x = b.x + 30 + Math.random()*(b.w-60);
+      const y = b.y + 30 + Math.random()*(b.h-60);
+      S.nodes.push({id:id++, type, x, y, active:true, respawnAt:0, amount:3});
+    }
+  }
+}
+spawnNodes();
+
+/* deep cave resource nodes: ore-heavy with a sprinkling of rare crystal */
+function spawnCaveNodes(){
+  S.cave.nodes = [];
+  let id=0;
+  const defs = [ {type:'stone', weight:4}, {type:'ore', weight:4}, {type:'crystal', weight:1} ];
+  const totalWeight = defs.reduce((a,d)=>a+d.weight,0);
+  const count = Math.floor((CAVE_W*CAVE_H)/22000);
+  for(let i=0;i<count;i++){
+    let r = Math.random()*totalWeight, type='stone';
+    for(const d of defs){ if(r<d.weight){ type=d.type; break; } r-=d.weight; }
+    const x = 60 + Math.random()*(CAVE_W-120);
+    const y = 130 + Math.random()*(CAVE_H-220);
+    S.cave.nodes.push({id:id++, type, x, y, active:true, respawnAt:0, amount:3});
+  }
+}
+spawnCaveNodes();
+
+/* decorative props (visual only, per biome) - deterministic placement */
+const propRand = seeded(4242);
+const PROPS = [];
+(function spawnProps(){
+  for(const b of BIOMES){
+    const count = Math.floor((b.w*b.h)/9000);
+    for(let i=0;i<count;i++){
+      const x = b.x + propRand()*b.w;
+      const y = b.y + propRand()*b.h;
+      let kind='tree';
+      if(b.name==='FOREST') kind = propRand()<0.7?'tree':'bush';
+      else if(b.name==='MOUNTAIN') kind = propRand()<0.7?'rock':'pine';
+      else if(b.name==='RUINED_CITY') kind = propRand()<0.5?'rubble':'pillar';
+      else if(b.name==='ABANDONED_FACTORY') kind = propRand()<0.5?'pipe':'crate';
+      else if(b.name==='COAST') kind = propRand()<0.6?'palm':'shell';
+      PROPS.push({x,y,kind,scale:1.05+propRand()*1.05,flip:propRand()<0.5?-1:1});
+    }
+  }
+})();
+const CLOUDS = Array.from({length:10},(_,i)=>({x:propRand()*MAP_W,y:propRand()*MAP_H*0.6,w:200+propRand()*260,spd:6+propRand()*10}));
+
+/* ---------------- INPUT ---------------- */
+window.addEventListener('keydown', e=>{
+  S.keys[e.key.toLowerCase()]=true;
+  if(e.key.toLowerCase()==='e') gatherNearby();
+  if(e.key.toLowerCase()==='shift') S.player.run = !S.player.run;
+});
+window.addEventListener('keyup', e=>{ S.keys[e.key.toLowerCase()]=false; });
+
+function bindHold(elId, dir){
+  const el = document.getElementById(elId);
+  const set = v=>()=>{ S.touchDir[dir]=v; };
+  el.addEventListener('touchstart', e=>{e.preventDefault(); set(true)();}, {passive:false});
+  el.addEventListener('touchend', e=>{e.preventDefault(); set(false)();}, {passive:false});
+  el.addEventListener('mousedown', set(true));
+  el.addEventListener('mouseup', set(false));
+  el.addEventListener('mouseleave', set(false));
+}
+S.touchDir = {up:false,down:false,left:false,right:false};
+bindHold('padUp','up'); bindHold('padDown','down'); bindHold('padLeft','left'); bindHold('padRight','right');
+document.getElementById('runToggle').addEventListener('click', function(){
+  S.player.run = !S.player.run;
+  this.classList.toggle('active', S.player.run);
+});
+
+/* ---------------- UI WIRING ---------------- */
+function showPanel(id){ document.getElementById(id).classList.add('show'); }
+function hidePanel(id){ document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('[data-close]').forEach(el=>{
+  el.addEventListener('click', ()=>hidePanel(el.getAttribute('data-close')));
+});
+
+document.getElementById('btnStart').addEventListener('click', startGame);
+document.getElementById('btnHow').addEventListener('click', ()=>showPanel('howPanel'));
+document.getElementById('btnAbout').addEventListener('click', ()=>showPanel('aboutPanel'));
+document.getElementById('btnTechMenu').addEventListener('click', ()=>{ renderTech(); showPanel('techPanel'); });
+
+document.getElementById('btnGather').addEventListener('click', gatherNearby);
+document.getElementById('btnCraft').addEventListener('click', ()=>{ renderCraft('TOOLS'); showPanel('craftPanel'); });
+document.getElementById('btnBuild').addEventListener('click', ()=>{ renderBuild(); showPanel('buildPanel'); });
+document.getElementById('btnExperiment').addEventListener('click', openExperiment);
+document.getElementById('btnInventory').addEventListener('click', ()=>{ renderInv(); showPanel('invPanel'); });
+document.getElementById('btnMission').addEventListener('click', ()=>{ renderMissions(); showPanel('missionPanel'); });
+document.getElementById('btnMap').addEventListener('click', ()=>{
+  if(S.cave.active){ toast('🕳️ คุณอยู่ในถ้ำใต้ภูเขา — เดินไปที่บันไดเพื่อกลับขึ้นผิวโลก'); return; }
+  toast('🗺️ '+biomeLabel(biomeAt(S.player.x,S.player.y).name)+' — เดินสำรวจเพื่อดูพื้นที่อื่น (ภูเขามีปากถ้ำให้ลงไปขุดแร่)');
+});
+
+function biomeLabel(n){
+  return {FOREST:'ป่า',MOUNTAIN:'ภูเขา',RUINED_CITY:'เมืองร้าง',ABANDONED_FACTORY:'โรงงานร้าง',COAST:'ชายฝั่ง'}[n]||n;
+}
+
+function startGame(){
+  initAudio();
+  menuBgRunning = false;
+  document.getElementById('mainMenu').style.display='none';
+  playIntro(beginWorld);
+}
+
+function beginWorld(){
+  document.getElementById('introScreen').classList.remove('show');
+  document.getElementById('hud').classList.add('show');
+  document.getElementById('bottomBar').classList.add('show');
+  document.getElementById('padWrap').classList.add('show');
+  document.getElementById('runToggle').classList.add('show');
+  S.started = true;
+  toast('เริ่มต้นจากศูนย์ … สำรวจ เก็บทรัพยากร และตามหาเพื่อนที่หลับใหลอยู่รอบตัว');
+  refreshMissionBanner();
+  refreshFriendTracker();
+  refreshWeatherTag();
+}
+
+/* ================= INTRO CUTSCENE ================= */
+const introCanvas = document.getElementById('introCanvas');
+const ictx = introCanvas.getContext('2d');
+const INTRO_SLIDES = [
+  {phase:'beam', text:'วันหนึ่ง... แสงประหลาดสีเขียวพวยพุ่งลงมาจากท้องฟ้า แผ่ปกคลุมโลกทั้งใบภายในพริบตา', dur:8200},
+  {phase:'petrify', text:'มนุษย์ทุกคนแข็งค้างกลายเป็นหินในทันที ร่างเกร็งนิ่งราวกับถูกแช่แข็งกลางอากาศ อารยธรรมทั้งหมดหยุดเดินไปพร้อมกันในชั่วขณะเดียว', dur:9500},
+  {phase:'epochs', text:'กาลเวลาผ่านไปนับพันปี ต้นไม้และเถาวัลย์ค่อย ๆ เลื้อยปกคลุมซากเมืองร้าง สายลมพัดผ่านความเงียบงันอันยาวนาน', dur:8500},
+  {phase:'crack', text:'แล้ววันหนึ่ง... รอยแตกร้าวเล็ก ๆ ก็ปรากฏขึ้นบนพื้นผิวหินแห่งหนึ่ง ราวกับมีบางสิ่งกำลังจะตื่นขึ้นมาอีกครั้ง', dur:7500},
+  {phase:'wake', text:'คุณคือคนแรกที่ตื่นขึ้น ท่ามกลางโลกที่ไร้ไฟฟ้า ไร้เครื่องจักร ไร้อารยธรรม เพื่อนของคุณยังหลับใหลอยู่ที่ไหนสักแห่ง บัดนี้ถึงเวลาเอาชีวิตรอด สร้างโลกขึ้นใหม่ และปลุกพวกเขาให้ตื่น...', dur:10000},
+];
+let introState=null;
+function resizeIntro(){ introCanvas.width=window.innerWidth; introCanvas.height=window.innerHeight; }
+window.addEventListener('resize', resizeIntro);
+
+function playIntro(onDone){
+  resizeIntro();
+  document.getElementById('introScreen').classList.add('show');
+  document.getElementById('introContinue').classList.remove('show');
+  introState = {i:0, t0:performance.now(), done:false, onDone, typed:'', charTimer:0};
+  showIntroText(0);
+  requestAnimationFrame(introLoop);
+}
+function showIntroText(i){
+  const el=document.getElementById('introText');
+  el.textContent='';
+  introState.fullText = INTRO_SLIDES[i].text;
+  introState.typed='';
+  introState.typeIdx=0;
+}
+document.getElementById('introSkip').addEventListener('click', ()=>{ if(introState){ introState.done=true; document.getElementById('introScreen').classList.remove('show'); introState.onDone(); } });
+document.getElementById('introContinue').addEventListener('click', ()=>{ if(introState){ introState.done=true; document.getElementById('introScreen').classList.remove('show'); introState.onDone(); } });
+
+// deterministic pseudo-random for stable statue/particle placement (seeded() defined above)
+const introRand = seeded(1337);
+const introStatues = Array.from({length:7}, (_,i)=>({
+  x:0.12+introRand()*0.76, y:0.55+introRand()*0.32, s:0.7+introRand()*0.9, sway:introRand()*6.28
+}));
+const introDust = Array.from({length:60}, (_,i)=>({x:introRand(),y:introRand(),spd:0.05+introRand()*0.1,sz:1+introRand()*2}));
+
+function drawSilhouette(ctx,x,y,scale,crack,ivy){
+  ctx.save();
+  ctx.translate(x,y); ctx.scale(scale,scale);
+  ctx.fillStyle = crack>0 ? '#8b887f' : '#6d6a62';
+  // simple standing figure
+  ctx.beginPath(); ctx.ellipse(0,-70,14,16,0,0,Math.PI*2); ctx.fill(); // head
+  ctx.beginPath(); ctx.moveTo(-18,-56); ctx.quadraticCurveTo(0,-40,18,-56); ctx.lineTo(16,10); ctx.quadraticCurveTo(0,20,-16,10); ctx.closePath(); ctx.fill(); // body
+  ctx.fillRect(-15,10,10,42); ctx.fillRect(5,10,10,42); // legs
+  if(crack>0){
+    ctx.strokeStyle='rgba(20,18,14,'+Math.min(1,crack)+')'; ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.moveTo(-4,-70); ctx.lineTo(2,-40); ctx.lineTo(-6,-10); ctx.lineTo(4,20); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(10,-56); ctx.lineTo(16,-20); ctx.stroke();
+  }
+  if(ivy>0){
+    ctx.strokeStyle='rgba(70,110,60,'+Math.min(1,ivy)+')'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(-16,10); ctx.quadraticCurveTo(-20,-20,-10,-50); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function introLoop(now){
+  if(!introState || introState.done) return;
+  const st = introState;
+  const slide = INTRO_SLIDES[st.i];
+  const elapsed = now - st.t0;
+  const p = Math.min(1, elapsed/slide.dur);
+  const w=introCanvas.width, h=introCanvas.height;
+  ictx.clearRect(0,0,w,h);
+
+  // typewriter text (slow, readable pace - finishes a little before the slide ends)
+  const targetChars = Math.floor(p * slide.text.length * 1.12);
+  st.typeIdx = Math.min(slide.text.length, targetChars);
+  document.getElementById('introText').textContent = slide.text.slice(0, st.typeIdx);
+
+  if(slide.phase==='beam'){
+    if(st.i===0 && st.beamSoundPlayed!==true){ st.beamSoundPlayed=true; }
+    ictx.fillStyle='#050703'; ictx.fillRect(0,0,w,h);
+    // faint tree silhouettes below, so the beam has somewhere to land
+    drawForestBackdrop(ictx, w, h, now*0.3, {skyTop:'#050703',skyMid:'#070d08',skyBot:'#0a140b', rayCount:0});
+    ictx.fillStyle='rgba(2,4,2,0.55)'; ictx.fillRect(0,0,w,h);
+
+    const beamP = Math.min(1,p*1.15);
+    // pure green tones only - hue pulses gently between two greens, no gold
+    const hueA = 130+Math.sin(now/700)*10;
+    const hueB = 150+Math.cos(now/900)*10;
+    const grd = ictx.createLinearGradient(0,0,0,h);
+    grd.addColorStop(0, `hsla(${hueA},80%,68%,${0.06+beamP*0.55})`);
+    grd.addColorStop(0.5, `hsla(${hueB},70%,55%,${0.03+beamP*0.28})`);
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    ictx.fillStyle=grd;
+    ictx.save();
+    ictx.translate(w*0.5,0);
+    // wider, wobblier sway so the beam feels alive rather than static
+    ictx.rotate(Math.sin(now/650)*0.045 + Math.sin(now/1900)*0.02);
+    const beamW = w*0.5*beamP + 90*Math.sin(now/500)*0.15 + 80;
+    ictx.fillRect(-beamW/2-40, -50, beamW+80, h+100);
+    ictx.restore();
+
+    // shimmering vertical streaks inside the beam, drifting and pulsing
+    ictx.save();
+    ictx.globalCompositeOperation='lighter';
+    for(let i=0;i<32;i++){
+      const flick = 0.4+0.6*Math.sin(now/240 + i*2.1);
+      const rx = w*0.5 + Math.sin(i*12.9+now/480)*w*0.2*beamP + Math.sin(now/1300+i)*14;
+      const ry = (i*41 + now*0.22) % h;
+      const hue = 125+((i*7)%40);
+      ictx.fillStyle = `hsla(${hue},85%,${70+flick*10}%,${beamP*0.55*flick})`;
+      ictx.fillRect(rx, ry, 2.4, 14+flick*10);
+    }
+    ictx.restore();
+
+    // slow rolling mist churn at the base, catching the green light
+    ictx.save();
+    ictx.globalAlpha = 0.35*beamP;
+    const mg = ictx.createRadialGradient(w*0.5, h*0.85, 10, w*0.5, h*0.85, w*0.5);
+    mg.addColorStop(0, `hsla(${hueA},70%,60%,0.4)`);
+    mg.addColorStop(1, 'rgba(0,0,0,0)');
+    ictx.fillStyle=mg;
+    ictx.beginPath(); ictx.ellipse(w*0.5+Math.sin(now/1500)*40, h*0.85, w*0.45, h*0.14, 0, 0, Math.PI*2); ictx.fill();
+    ictx.restore();
+  } else if(slide.phase==='petrify'){
+    if(!st.petrifyFX) st.petrifyFX = {shake:0, particles:[], soundedIdx:-1, flashSounded:false};
+    const fx = st.petrifyFX;
+    if(!fx.flashSounded){ fx.flashSounded=true; playStoneThud(0.7); }
+
+    const flashP = Math.min(1,p*3);
+    const bg = 1-Math.min(1,(p-0.05)*1.3);
+    // pure green-white flash fading to a cool stone-grey scene (no gold cast)
+    ictx.fillStyle = `rgba(${210*bg+18},${255*bg+20},${210*bg+18},1)`;
+    ictx.fillRect(0,0,w,h);
+    ictx.fillStyle='#171b16'; ictx.fillRect(0,h*0.72,w,h*0.3);
+
+    // each statue: brief violent freeze-shake right as its crack/harden threshold
+    // is crossed, then it snaps rigid - with a dust burst and a thud/crack sound.
+    introStatues.forEach((s,idx)=>{
+      const startAt = 0.15+idx*0.05;
+      const crack = Math.max(0, Math.min(1, (p-startAt)*3));
+      const freezeWindow = Math.max(0, Math.min(1, (p-startAt)*7)); // fast local ramp
+      const isFreezing = freezeWindow>0 && freezeWindow<1;
+      let jx=0, jy=0, wobble=0;
+      if(isFreezing){
+        // rapid convulsive shake that decays as the body locks up
+        const decay = 1-freezeWindow;
+        jx = Math.sin(now/28 + idx*7)*6*decay;
+        jy = Math.cos(now/34 + idx*5)*3*decay;
+        wobble = Math.sin(now/40+idx)*0.12*decay;
+      }
+      if(freezeWindow>=1 && idx>fx.soundedIdx){
+        fx.soundedIdx = idx;
+        playCrackSound(0.8);
+        if(idx%2===0) playStoneThud(0.35);
+        // spawn a small burst of stone dust/debris at this statue
+        const cx=s.x*w, cy=s.y*h;
+        for(let k=0;k<10;k++){
+          const ang = Math.random()*Math.PI*2;
+          const spd = 0.6+Math.random()*1.8;
+          fx.particles.push({x:cx,y:cy-40*s.s, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd-0.6, life:1, sz:1.5+Math.random()*2.5});
+        }
+      }
+      const sc = s.s*Math.min(w,h)/380;
+      ictx.save();
+      if(wobble) ictx.translate(s.x*w, s.y*h), ictx.rotate(wobble), ictx.translate(-s.x*w,-s.y*h);
+      drawSilhouette(ictx, s.x*w+jx, s.y*h+jy, sc, crack, 0);
+      ictx.restore();
+    });
+
+    // update + draw dust particles
+    ictx.save();
+    fx.particles = fx.particles.filter(pt=>pt.life>0);
+    fx.particles.forEach(pt=>{
+      pt.x += pt.vx; pt.y += pt.vy; pt.vy += 0.04; pt.life -= 0.018;
+      ictx.globalAlpha = Math.max(0,pt.life)*0.8;
+      ictx.fillStyle = '#c9c4b6';
+      ictx.beginPath(); ictx.arc(pt.x,pt.y,pt.sz,0,Math.PI*2); ictx.fill();
+    });
+    ictx.restore();
+    ictx.globalAlpha=1;
+  } else if(slide.phase==='epochs'){
+    drawForestBackdrop(ictx, w, h, now, {skyTop:'#0d160e',skyMid:'#132014',skyBot:'#1a2c1c', rayCount:3});
+    ictx.fillStyle='rgba(6,10,6,0.3)'; ictx.fillRect(0,0,w,h);
+    introStatues.forEach((s)=>{
+      drawSilhouette(ictx, s.x*w, s.y*h, s.s*Math.min(w,h)/380, 1, Math.min(1,p*1.6));
+    });
+    ictx.fillStyle='rgba(200,220,190,.5)';
+    introDust.forEach(d=>{
+      const yy = (d.y + now*0.00002*d.spd*30) % 1;
+      ictx.fillRect((d.x*w + Math.sin(now/2000+d.x*10)*20), yy*h, d.sz, d.sz);
+    });
+  } else if(slide.phase==='crack'){
+    if(!st.crackFX) st.crackFX = {snapped:false, particles:[]};
+    const cfx = st.crackFX;
+    drawForestBackdrop(ictx, w, h, now, {skyTop:'#10190f',skyMid:'#152317',skyBot:'#1c2e1e', rayCount:2});
+    ictx.fillStyle='rgba(4,7,4,0.35)'; ictx.fillRect(0,0,w,h);
+    introStatues.forEach((s,idx)=>{
+      drawSilhouette(ictx, s.x*w, s.y*h, s.s*Math.min(w,h)/380, 1, 1);
+    });
+    // focus statue (first one) cracking with a green glow (no gold)
+    const s = introStatues[0];
+    const cx=s.x*w, cy=s.y*h;
+    const glow = 0.35+0.35*Math.sin(now/170);
+    ictx.save();
+    ictx.globalAlpha = Math.min(1,p*1.5)*glow;
+    ictx.fillStyle='#8fe08a';
+    ictx.beginPath(); ictx.arc(cx,cy-30,60,0,Math.PI*2); ictx.fill();
+    ictx.restore();
+    if(p>0.55){
+      const crackA = Math.min(1,(p-0.55)*3);
+      ictx.strokeStyle=`rgba(150,255,150,${crackA})`; ictx.lineWidth=2.4;
+      ictx.beginPath(); ictx.moveTo(cx-6,cy-90); ictx.lineTo(cx+4,cy-40); ictx.lineTo(cx-8,cy); ictx.stroke();
+      ictx.beginPath(); ictx.moveTo(cx+8,cy-60); ictx.lineTo(cx+14,cy-20); ictx.stroke();
+      if(!cfx.snapped && p>0.72){
+        cfx.snapped=true;
+        playCrackSound(1);
+        for(let k=0;k<14;k++){
+          const ang=Math.random()*Math.PI*2, spd=0.8+Math.random()*2.2;
+          cfx.particles.push({x:cx,y:cy-40,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-1,life:1,sz:1.5+Math.random()*2.5});
+        }
+      }
+    }
+    cfx.particles = cfx.particles.filter(pt=>pt.life>0);
+    cfx.particles.forEach(pt=>{
+      pt.x+=pt.vx; pt.y+=pt.vy; pt.vy+=0.04; pt.life-=0.016;
+      ictx.globalAlpha=Math.max(0,pt.life)*0.85;
+      ictx.fillStyle='#cfe8c8';
+      ictx.beginPath(); ictx.arc(pt.x,pt.y,pt.sz,0,Math.PI*2); ictx.fill();
+    });
+    ictx.globalAlpha=1;
+  } else if(slide.phase==='wake'){
+    const zoom = 1+p*0.5;
+    ictx.fillStyle='#0e130e'; ictx.fillRect(0,0,w,h);
+    ictx.save();
+    ictx.translate(w/2,h*0.62);
+    ictx.scale(zoom,zoom);
+    const burst = Math.min(1,p*2);
+    ictx.globalAlpha = Math.max(0,1-p*1.2);
+    ictx.fillStyle='#8b887f';
+    ictx.fillRect(-60,-10,120,60); // rubble base fading
+    ictx.restore();
+    // rising light figure
+    const riseY = h*0.62 - p*40;
+    ictx.save();
+    ictx.globalAlpha = Math.min(1, p*1.8);
+    drawSilhouette(ictx, w/2, riseY, Math.min(w,h)/340, 0, 0);
+    ictx.restore();
+    ictx.fillStyle='rgba(255,240,200,'+(0.15+0.1*Math.sin(now/200))+')';
+    ictx.beginPath(); ictx.arc(w/2, riseY-90, 90*Math.min(1,p*1.5), 0, Math.PI*2); ictx.fill();
+    // sunrise horizon glow
+    const grd = ictx.createLinearGradient(0,h*0.55,0,h);
+    grd.addColorStop(0,'rgba(255,200,140,'+(p*0.35)+')');
+    grd.addColorStop(1,'rgba(20,16,10,0)');
+    ictx.fillStyle=grd; ictx.fillRect(0,h*0.55,w,h*0.45);
+  }
+
+  if(p>=1){
+    if(st.i < INTRO_SLIDES.length-1){
+      st.i++; st.t0 = now; showIntroText(st.i);
+    } else {
+      document.getElementById('introContinue').classList.add('show');
+      requestAnimationFrame(introLoop);
+      return;
+    }
+  }
+  requestAnimationFrame(introLoop);
+}
+
+/* ---------------- TOAST ---------------- */
+function toast(msg){
+  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.getElementById('toastLog').appendChild(t);
+  setTimeout(()=>t.remove(), 2900);
+}
+
+/* ---------------- INVENTORY HELPERS ---------------- */
+function addItem(id,qty){ S.inventory[id]=(S.inventory[id]||0)+qty; }
+function hasItems(cost){ return Object.entries(cost).every(([k,v])=>(S.inventory[k]||0)>=v); }
+function payItems(cost){ Object.entries(cost).forEach(([k,v])=>{ if(v>0) S.inventory[k]-=v; }); }
+
+/* ---------------- GATHER / WAKE FRIENDS ---------------- */
+function gatherNearby(){
+  if(!S.started) return;
+  const p=S.player;
+
+  if(!S.cave.active){
+    // sleeping friends take priority over resources when close by
+    let closestFriend=null, fd=70;
+    for(const f of FRIENDS){
+      if(f.awake) continue;
+      const d=Math.hypot(f.x-p.x,f.y-p.y);
+      if(d<fd){ fd=d; closestFriend=f; }
+    }
+    if(closestFriend){
+      closestFriend.awake=true;
+      S.wokenFriends++;
+      playCrackSound(0.6);
+      toast('🎉 คุณปลุก '+closestFriend.name+' ให้ตื่นขึ้นมาแล้ว!');
+      refreshFriendTracker();
+      checkMissions();
+      return;
+    }
+  }
+
+  const pool = S.cave.active ? S.cave.nodes : S.nodes;
+  let closest=null, cd=60;
+  for(const n of pool){
+    if(!n.active) continue;
+    const d=Math.hypot(n.x-p.x,n.y-p.y);
+    if(d<cd){ cd=d; closest=n; }
+  }
+  if(!closest){ toast(S.cave.active?'ไม่มีแร่อยู่ใกล้ ๆ ลองสำรวจถ้ำต่อไป':'ไม่มีทรัพยากรอยู่ใกล้ ๆ'); return; }
+  addItem(closest.type,1);
+  closest.amount--;
+  toast('+1 '+RESOURCE_DEFS[closest.type].emoji+' '+RESOURCE_DEFS[closest.type].name);
+  if(closest.amount<=0){
+    closest.active=false;
+    closest.respawnAt = S.elapsed + 30000 + Math.random()*20000;
+  }
+  checkMissions();
+}
+
+/* ---------------- CAVE ENTRY / EXIT ---------------- */
+function tryCaveTransition(){
+  const p=S.player;
+  if(!S.cave.active){
+    for(const ent of CAVE_ENTRANCES){
+      const d = Math.hypot(ent.x-p.x, ent.y-p.y);
+      if(d<130 && !ent.hinted){ ent.hinted=true; toast('⛰️ พบปากถ้ำ! เดินเข้าไปใกล้ ๆ เพื่อลงไปขุดแร่'); }
+      if(d>170) ent.hinted=false;
+      if(d<40){
+        S.cave.returnX = ent.x; S.cave.returnY = ent.y+70;
+        S.cave.active = true;
+        S.counters.enteredCave = true;
+        p.x = CAVE_W/2; p.y = CAVE_H-90;
+        toast('🕳️ เข้าสู่ถ้ำมืดใต้ภูเขา... ระวังตัวและตามหาแร่ธาตุ');
+        refreshWeatherTag();
+        checkMissions();
+        return;
+      }
+    }
+  } else {
+    const d = Math.hypot(CAVE_EXIT.x-p.x, CAVE_EXIT.y-p.y);
+    if(d<44){
+      S.cave.active=false;
+      p.x = S.cave.returnX; p.y = S.cave.returnY;
+      toast('☀️ ปีนบันไดกลับขึ้นสู่พื้นผิวโลก');
+      refreshWeatherTag();
+    }
+  }
+}
+
+/* ---------------- CRAFT ---------------- */
+let craftCat='TOOLS';
+function renderCraft(cat){
+  craftCat=cat;
+  const tabs=document.getElementById('craftTabs'); tabs.innerHTML='';
+  Object.keys(CRAFT_RECIPES).forEach(c=>{
+    const b=document.createElement('div'); b.className='tabBtn'+(c===cat?' active':'');
+    b.textContent=c; b.onclick=()=>renderCraft(c); tabs.appendChild(b);
+  });
+  const grid=document.getElementById('craftGrid'); grid.innerHTML='';
+  CRAFT_RECIPES[cat].forEach(r=>{
+    const unlocked = S.unlockedTech.has(r.tech);
+    const afford = hasItems(r.cost);
+    const el=document.createElement('div');
+    el.className='craftCard'+(!unlocked?' locked':'');
+    const costTxt = Object.entries(r.cost).map(([k,v])=>v+RESOURCE_DEFS[k].emoji).join(' ');
+    el.innerHTML = `<div class="ic">${r.emoji}</div><div>${r.name}</div><div class="cost">${unlocked?costTxt:'ต้องปลดล็อก'}</div>`;
+    if(unlocked){
+      el.onclick=()=>{
+        if(!hasItems(r.cost)){ toast('ทรัพยากรไม่พอ'); return; }
+        payItems(r.cost); addItem(r.id,1);
+        toast('สร้าง '+r.emoji+' '+r.name+' สำเร็จ');
+        checkMissions();
+        renderCraft(cat);
+      };
+    }
+    grid.appendChild(el);
+  });
+}
+
+/* ---------------- BUILD ---------------- */
+let placingBuild = null;
+function renderBuild(){
+  const list=document.getElementById('buildList'); list.innerHTML='';
+  BUILD_OPTIONS.forEach(o=>{
+    const unlocked = S.unlockedTech.has(o.tech);
+    const afford = hasItems(o.cost);
+    const row=document.createElement('div'); row.className='buildOpt';
+    const costTxt = Object.entries(o.cost).map(([k,v])=>v+RESOURCE_DEFS[k].emoji).join(' ');
+    row.innerHTML = `<span>${o.emoji} ${o.name} <small style="opacity:.7">(${unlocked?costTxt:'ล็อก'})</small></span>`;
+    const btn=document.createElement('button');
+    btn.textContent='วาง';
+    btn.disabled = !unlocked || !afford;
+    btn.onclick=()=>{
+      if(o.type==='sciencecore' && S.wokenFriends<FRIENDS.length){
+        toast('ต้องปลุกเพื่อนให้ครบทั้ง '+FRIENDS.length+' คนก่อน จึงจะสร้าง Science Core ได้');
+        return;
+      }
+      placingBuild=o;
+      hidePanel('buildPanel');
+      toast('แตะบนแผนที่ใกล้ตัวละครเพื่อวาง '+o.name);
+    };
+    row.appendChild(btn);
+    list.appendChild(row);
+  });
+}
+worldCanvas.addEventListener('click', e=>{
+  if(!placingBuild || !S.started) return;
+  if(S.cave.active){ toast('ไม่สามารถสร้างสิ่งปลูกสร้างในถ้ำได้ กลับขึ้นผิวโลกก่อน'); placingBuild=null; return; }
+  if(placingBuild.type==='sciencecore' && S.wokenFriends<FRIENDS.length){
+    toast('ต้องปลุกเพื่อนให้ครบทั้ง '+FRIENDS.length+' คนก่อน จึงจะสร้าง Science Core ได้');
+    placingBuild=null; return;
+  }
+  const wx = e.clientX + S.cam.x, wy = e.clientY + S.cam.y;
+  const d = Math.hypot(wx-S.player.x, wy-S.player.y);
+  if(d>180){ toast('วางได้เฉพาะบริเวณใกล้ตัวละครเท่านั้น'); return; }
+  if(!hasItems(placingBuild.cost)){ toast('ทรัพยากรไม่พอ'); placingBuild=null; return; }
+  payItems(placingBuild.cost);
+  S.buildings.push({type:placingBuild.type, x:wx, y:wy});
+  if(placingBuild.unlocks) S.unlockedTech.add(placingBuild.unlocks);
+  toast('สร้าง '+placingBuild.emoji+' '+placingBuild.name+' สำเร็จ');
+  if(placingBuild.type==='sciencecore') triggerEnding();
+  placingBuild=null;
+  checkMissions();
+});
+
+/* ---------------- EXPERIMENT ---------------- */
+function openExperiment(){
+  const near = S.buildings.find(b=>b.type==='exptable' && Math.hypot(b.x-S.player.x,b.y-S.player.y)<160);
+  if(!near || S.cave.active){ toast('ต้องอยู่ใกล้โต๊ะทดลองบนพื้นผิวก่อน'); return; }
+  const selA=document.getElementById('expA'), selB=document.getElementById('expB');
+  const opts = Object.keys(RESOURCE_DEFS).map(k=>`<option value="${k}">${RESOURCE_DEFS[k].emoji} ${RESOURCE_DEFS[k].name} (${S.inventory[k]||0})</option>`).join('')
+    + `<option value="none">— ไม่ใช้ —</option>`;
+  selA.innerHTML=opts; selB.innerHTML=opts;
+  document.getElementById('expResult').textContent='';
+  showPanel('expPanel');
+}
+document.getElementById('expRun').addEventListener('click', ()=>{
+  const a=document.getElementById('expA').value, b=document.getElementById('expB').value;
+  const nearFire = S.buildings.some(f=>f.type==='campfire' && Math.hypot(f.x-S.player.x,f.y-S.player.y)<220);
+  const nearFurnace = S.buildings.some(f=>f.type==='furnace_b' && Math.hypot(f.x-S.player.x,f.y-S.player.y)<220);
+  const res=document.getElementById('expResult');
+
+  const combo = [a,b].sort().join('+');
+  let done=false;
+
+  if((combo==='none+wood'||a==='wood'||b==='wood') && nearFire && (S.inventory.wood||0)>0 && !done){
+    if((a==='wood'||b==='wood')){
+      payItems({wood:1}); addItem('charcoal',1);
+      S.unlockedTech.add('charcoal_tech');
+      res.textContent='🔥 ไม้ + ความร้อน → ได้ถ่าน! ปลดล็อกความรู้เรื่องถ่าน';
+      done=true;
+    }
+  }
+  if(!done && (a==='sand'||b==='sand') && nearFire && (S.inventory.sand||0)>0){
+    payItems({sand:1}); S.unlockedTech.add('glass_tech'); addItem('glass',1);
+    res.textContent='🏖️ ทราย + ความร้อน → ปลดล็อกเทคโนโลยีแก้ว! ได้แก้ว 1 ชิ้น';
+    done=true;
+  }
+  if(!done && (a==='ore'||b==='ore') && nearFurnace && (S.inventory.ore||0)>0){
+    payItems({ore:1}); S.unlockedTech.add('metal_tech'); addItem('metal',1);
+    res.textContent='⛏️ แร่ + เตา → ได้วัสดุโลหะ! ปลดล็อกเทคโนโลยีโลหะ';
+    done=true;
+  }
+  if(!done && (a==='crystal'||b==='crystal') && (S.inventory.crystal||0)>0){
+    payItems({crystal:1}); S.unlockedTech.add('comms');
+    res.textContent='🔮 วิเคราะห์คริสตัลถ้ำ → ปลดล็อกความรู้เรื่องระบบสื่อสารล่วงหน้า!';
+    done=true;
+  }
+  if(!done && (S.inventory.metal_tech!==undefined) && S.unlockedTech.has('metal_tech') && (a==='metal'||b==='metal') && (S.inventory.metal||0)>=2){
+    payItems({metal:2}); S.unlockedTech.add('electricity'); S.unlockedTech.add('battery'); S.unlockedTech.add('wiring'); S.unlockedTech.add('lamp_tech');
+    res.textContent='⚡ ประกอบวัสดุโลหะ → ค้นพบหลักการไฟฟ้า! ปลดล็อก ไฟฟ้า / แบตเตอรี่ / สายไฟ / หลอดไฟ';
+    done=true;
+  }
+  if(!done && S.unlockedTech.has('electricity') && (a==='glass'||b==='glass') && (S.inventory.glass||0)>=1 && (S.inventory.metal||0)>=1){
+    payItems({glass:1,metal:1}); S.unlockedTech.add('generator'); S.unlockedTech.add('motor'); S.unlockedTech.add('machine');
+    res.textContent='🔧 ประกอบแก้ว+โลหะ → ปลดล็อก เครื่องกำเนิดไฟฟ้า / มอเตอร์ / เครื่องจักร';
+    done=true;
+  }
+  if(!done && S.unlockedTech.has('machine') && (a==='metal'||b==='metal') && (S.inventory.metal||0)>=3){
+    payItems({metal:3}); S.unlockedTech.add('automation'); S.unlockedTech.add('comms');
+    res.textContent='📡 ประกอบระบบอัตโนมัติ → ปลดล็อก ระบบสื่อสาร (พร้อมสร้าง Science Core แล้ว!)';
+    done=true;
+  }
+  if(!done){ res.textContent='ผลลัพธ์ยังไม่ชัดเจน… ลองทรัพยากรหรือทำเลอื่นดู (บางการทดลองต้องอยู่ใกล้กองไฟ/เตา)'; }
+  checkMissions();
+});
+
+/* ---------------- CIRCUIT PUZZLE ---------------- */
+let circuitState=[false,false,false];
+const circuitTarget=[true,false,true];
+function renderCircuit(){
+  const row=document.getElementById('switchRow'); row.innerHTML='';
+  circuitState.forEach((v,i)=>{
+    const b=document.createElement('div'); b.className='switchBtn'+(v?' on':'');
+    b.textContent = v?'●':'○';
+    b.onclick=()=>{ circuitState[i]=!circuitState[i]; renderCircuit(); checkCircuit(); };
+    row.appendChild(b);
+  });
+}
+function checkCircuit(){
+  const ok = circuitState.every((v,i)=>v===circuitTarget[i]);
+  document.getElementById('lampIcon').textContent = ok?'💡':'🔌';
+  document.getElementById('circuitMsg').textContent = ok?'✅ วงจรครบ! ประตูเปิดแล้ว':'วงจรยังไม่ครบ ลองสลับสวิตช์ใหม่';
+  if(ok) S.circuitDoorSolved=true;
+}
+
+/* ---------------- INVENTORY / TECH / MISSION RENDER ---------------- */
+function renderInv(){
+  const row=document.getElementById('invRow'); row.innerHTML='';
+  const entries = Object.entries(S.inventory).filter(([k,v])=>v>0);
+  if(entries.length===0){ row.innerHTML='<span style="opacity:.6">ยังไม่มีของ ลองออกไปเก็บทรัพยากรดูสิ</span>'; return; }
+  entries.forEach(([k,v])=>{
+    const def = RESOURCE_DEFS[k];
+    const emoji = def?def.emoji:'📦';
+    const name = def?def.name:k;
+    const consumable = (k==='water'||k==='fruit');
+    const chip=document.createElement('div'); chip.className='invChip';
+    chip.style.cursor = consumable?'pointer':'default';
+    if(consumable) chip.style.borderColor = 'rgba('+NODE_COLORS[k]+',.8)';
+    chip.textContent = `${emoji} ${name} x${v}` + (consumable?' (แตะเพื่อใช้)':'');
+    if(consumable){
+      chip.onclick=()=>{
+        if(k==='water'){
+          S.inventory.water--; S.stats.thirst=Math.min(100,S.stats.thirst+30);
+          S.counters.waterDrunk++; toast('💧 ดื่มน้ำ ช่วยดับกระหาย');
+        } else {
+          S.inventory.fruit--; S.stats.hunger=Math.min(100,S.stats.hunger+25);
+          S.counters.foodEaten++; toast('🍒 กินผลไม้ ช่วยหายหิว');
+        }
+        checkMissions();
+        renderInv();
+      };
+    }
+    row.appendChild(chip);
+  });
+}
+function renderTech(){
+  const body=document.getElementById('techTreeBody'); body.innerHTML='';
+  TECH_TREE.forEach(era=>{
+    const div=document.createElement('div'); div.className='techEra';
+    const h=document.createElement('h3'); h.textContent=era.era; div.appendChild(h);
+    era.items.forEach(it=>{
+      const p=document.createElement('span'); p.className='techPill'+(S.unlockedTech.has(it.id)?' unlocked':'');
+      p.textContent=(S.unlockedTech.has(it.id)?'✔ ':'🔒 ')+it.name;
+      div.appendChild(p);
+    });
+    body.appendChild(div);
+  });
+}
+function renderMissions(){
+  const list=document.getElementById('missionList'); list.innerHTML='';
+  MISSIONS.forEach((m,i)=>{
+    const done = m.check();
+    const row=document.createElement('div'); row.className='missionItem'+(done?' done':'');
+    row.innerHTML = `<div class="chk">${done?'✓':i+1}</div><div>${m.text}</div>`;
+    list.appendChild(row);
+  });
+}
+function refreshMissionBanner(){
+  const m = MISSIONS[S.missionIndex];
+  const el = document.getElementById('missionBanner');
+  if(!m){ el.classList.remove('show'); return; }
+  el.classList.add('show');
+  el.textContent = 'ภารกิจ '+m.id+': '+m.text;
+}
+function refreshFriendTracker(){
+  const el = document.getElementById('friendTracker');
+  el.classList.add('show');
+  el.textContent = '💤 เพื่อนที่ปลุกแล้ว: '+S.wokenFriends+'/'+FRIENDS.length;
+}
+function refreshWeatherTag(){
+  const tag = document.getElementById('weatherTag');
+  if(S.cave.active){ tag.textContent='🕳️ ในถ้ำมืด'; return; }
+  tag.textContent = S.weather==='sun'?'☀️ แดดจัด':(S.weather==='rain'?'🌧️ ฝนตก':'⛈️ พายุ');
+}
+function checkMissions(){
+  while(S.missionIndex < MISSIONS.length && MISSIONS[S.missionIndex].check()){
+    toast('✅ ภารกิจสำเร็จ: '+MISSIONS[S.missionIndex].text);
+    S.missionIndex++;
+  }
+  refreshMissionBanner();
+}
+
+/* ---------------- ENDING ---------------- */
+function triggerEnding(){
+  S.gameOver=true;
+  document.getElementById('endText').textContent =
+`คุณตื่นขึ้นมาคนเดียวท่ามกลางซากอารยธรรม
+ไม่มีไฟฟ้า ไม่มีเครื่องจักร ไม่มีเทคโนโลยี
+
+แต่คุณเอาชีวิตรอด เรียนรู้ ทดลอง
+และปลุกเพื่อนทั้ง ${FRIENDS.length} คนให้ตื่นขึ้นมาด้วยกัน
+
+ร่วมมือกัน คุณได้สร้างอารยธรรมกลับคืนมาอีกครั้ง`;
+  document.getElementById('endScreen').classList.add('show');
+}
+
+/* ---------------- MAIN LOOP ---------------- */
+let last=performance.now();
+function frame(now){
+  const dt = Math.min(64, now-last); last=now;
+  if(S.started && !S.gameOver){
+    S.elapsed += dt;
+    updatePlayer(dt);
+    updateWeather(dt);
+    updateSurvival(dt);
+    updateBuildingProximity();
+  }
+  render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* movement */
+function updatePlayer(dt){
+  const p=S.player;
+  let dx=0, dy=0;
+  if(S.keys['w']||S.keys['arrowup']||S.touchDir.up) dy-=1;
+  if(S.keys['s']||S.keys['arrowdown']||S.touchDir.down) dy+=1;
+  if(S.keys['a']||S.keys['arrowleft']||S.touchDir.left){ dx-=1; p.facing=-1; }
+  if(S.keys['d']||S.keys['arrowright']||S.touchDir.right){ dx+=1; p.facing=1; }
+  const len=Math.hypot(dx,dy)||1;
+  const spd = (p.run?4.6:2.6) * (dt/16.7);
+  const mw = S.cave.active?CAVE_W:MAP_W, mh = S.cave.active?CAVE_H:MAP_H;
+  p.x = Math.max(20, Math.min(mw-20, p.x + (dx/len)*spd));
+  p.y = Math.max(20, Math.min(mh-20, p.y + (dy/len)*spd));
+  p.moving = (dx!==0||dy!==0);
+
+  S.cam.x = Math.max(0, Math.min(mw-worldCanvas.width, p.x - worldCanvas.width/2));
+  S.cam.y = Math.max(0, Math.min(mh-worldCanvas.height, p.y - worldCanvas.height/2));
+
+  // node respawns (surface + cave)
+  for(const n of S.nodes){ if(!n.active && S.elapsed>n.respawnAt){ n.active=true; n.amount=3; } }
+  for(const n of S.cave.nodes){ if(!n.active && S.elapsed>n.respawnAt){ n.active=true; n.amount=3; } }
+
+  tryCaveTransition();
+}
+
+function updateWeather(dt){
+  S.weatherTimer -= dt;
+  if(S.weatherTimer<=0){
+    const roll=Math.random();
+    S.weather = roll<0.55?'sun':(roll<0.85?'rain':'storm');
+    S.weatherTimer = 40000+Math.random()*30000;
+    refreshWeatherTag();
+  }
+}
+
+function isNight(){
+  const frac = (S.elapsed % DAY_MS)/DAY_MS;
+  return frac>NIGHT_START;
+}
+function dayFrac(){ return (S.elapsed % DAY_MS)/DAY_MS; }
+
+function updateSurvival(dt){
+  const sec = dt/1000;
+  S.stats.hunger = Math.max(0, S.stats.hunger - sec*0.35);
+  S.stats.thirst = Math.max(0, S.stats.thirst - sec*0.5);
+
+  // ambient temperature target
+  let target = isNight()?30:65;
+  if(S.cave.active) target = 45; // caves are cool and shielded from weather/night swings
+  if(!S.cave.active && S.weather==='rain') target -= 12;
+  if(!S.cave.active && S.weather==='storm') target -= 20;
+  const nearFire = !S.cave.active && S.buildings.some(b=>b.type==='campfire' && Math.hypot(b.x-S.player.x,b.y-S.player.y)<160 && S.weather!=='storm');
+  const inShelter = !S.cave.active && S.buildings.some(b=>b.type==='shelter' && Math.hypot(b.x-S.player.x,b.y-S.player.y)<120);
+  if(nearFire) target += 35;
+  if(inShelter) target += 15;
+  target = Math.max(0, Math.min(100, target));
+  S.stats.temp += (target - S.stats.temp) * Math.min(1, sec*0.5);
+
+  if(S.stats.hunger<=0 || S.stats.thirst<=0) S.stats.hp -= sec*2.2;
+  if(S.stats.temp<15) S.stats.hp -= sec*1.6;
+  if(S.stats.temp>90) S.stats.hp -= sec*1.0;
+  if(S.stats.hp<100 && S.stats.hunger>40 && S.stats.thirst>40 && S.stats.temp>35 && S.stats.temp<80) S.stats.hp = Math.min(100, S.stats.hp+sec*0.6);
+  S.stats.hp = Math.max(0, Math.min(100, S.stats.hp));
+
+  if(!S.cave.active && S.weather==='storm' && !inShelter && Math.random()<sec*0.02){
+    S.stats.hp -= 3; toast('⛈️ พายุทำให้คุณบาดเจ็บ! รีบหาที่หลบภัย');
+  }
+
+  updateHUD();
+
+  if(S.stats.hp<=0 && !S.gameOver){
+    S.gameOver=true;
+    document.getElementById('endText').textContent = 'คุณล้มลงท่ามกลางโลกที่ไร้อารยธรรม...\n\nลองใหม่อีกครั้ง เพื่อเอาชีวิตรอดและสร้างโลกจากศูนย์';
+    document.getElementById('endScreen').classList.add('show');
+  }
+}
+
+function updateHUD(){
+  document.querySelector('#hp .barInner').style.width = S.stats.hp+'%';
+  document.querySelector('#hunger .barInner').style.width = S.stats.hunger+'%';
+  document.querySelector('#thirst .barInner').style.width = S.stats.thirst+'%';
+  document.querySelector('#temp .barInner').style.width = S.stats.temp+'%';
+  const day = Math.floor(S.elapsed/DAY_MS)+1;
+  const hour = Math.floor(dayFrac()*24);
+  const min = Math.floor((dayFrac()*24*60)%60);
+  document.getElementById('clock').textContent = `วันที่ ${day} · ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
+}
+
+function updateBuildingProximity(){
+  // spawn electric door puzzle trigger once electricity unlocked (one-time flavor object)
+}
+
+/* ---------------- RENDER ---------------- */
+function drawCharacter(ctx, x, y, facing, moving, colorMain){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.scale(facing*1.4,1.4); // bigger, chunkier proportions
+  const t = S.elapsed/1000;
+  const bob = moving? Math.sin(S.elapsed/90)*2 : Math.sin(t*1.6)*0.6;
+  // shadow
+  ctx.fillStyle='rgba(0,0,0,.35)';
+  ctx.beginPath(); ctx.ellipse(0,21,15,5,0,0,Math.PI*2); ctx.fill();
+  // cape / scarf trailing behind
+  ctx.fillStyle='#c1483f';
+  ctx.beginPath();
+  ctx.moveTo(-9,-9);
+  ctx.quadraticCurveTo(-22-Math.abs(bob), 2+Math.sin(t*3)*3, -14-Math.abs(bob), 18);
+  ctx.quadraticCurveTo(-8,10,-8,-6);
+  ctx.closePath(); ctx.fill();
+  // legs
+  ctx.fillStyle='#3a2a20';
+  ctx.fillRect(-8,6+bob*0.3,6,13);
+  ctx.fillRect(2,6-bob*0.3,6,13);
+  // boots
+  ctx.fillStyle='#22180f';
+  ctx.fillRect(-9,17+bob*0.3,7,4);
+  ctx.fillRect(1,17-bob*0.3,7,4);
+  // body
+  const bodyGrad = ctx.createLinearGradient(0,-11,0,11);
+  bodyGrad.addColorStop(0, lighten(colorMain,18));
+  bodyGrad.addColorStop(1, colorMain);
+  ctx.fillStyle=bodyGrad;
+  ctx.beginPath(); ctx.roundRect(-10,-11,20,21,6); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=1; ctx.stroke();
+  // belt
+  ctx.fillStyle='#5c3a12'; ctx.fillRect(-10,5,20,3);
+  // arms (subtle swing)
+  ctx.fillStyle=colorMain;
+  const swing = moving? Math.sin(S.elapsed/90)*4 : 0;
+  ctx.fillRect(-12,-6+swing*0.3,4,12);
+  ctx.fillRect(8,-6-swing*0.3,4,12);
+  // head
+  ctx.fillStyle='#e8c39e';
+  ctx.beginPath(); ctx.arc(0,-19,9.2,0,Math.PI*2); ctx.fill();
+  // hair
+  ctx.fillStyle='#2b2118';
+  ctx.beginPath(); ctx.arc(0,-23,9.7,Math.PI,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-9,-22); ctx.quadraticCurveTo(-13,-10,-10,-4); ctx.quadraticCurveTo(-6,-14,-9,-22); ctx.fill();
+  // eye (blink occasionally)
+  const blink = (Math.sin(t*0.7)>0.985);
+  ctx.fillStyle='#1c2b23';
+  if(!blink) ctx.beginPath(), ctx.arc(4,-19,1.5,0,Math.PI*2), ctx.fill();
+  else { ctx.fillRect(2.5,-19,3,0.8); }
+  ctx.restore();
+}
+function lighten(hex, amt){
+  const c = hex.replace('#','');
+  const num = parseInt(c,16);
+  let r=(num>>16)+amt, g=((num>>8)&0xff)+amt, b=(num&0xff)+amt;
+  r=Math.min(255,Math.max(0,r)); g=Math.min(255,Math.max(0,g)); b=Math.min(255,Math.max(0,b));
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+
+/* colorful, clearly-readable gather node: a glowing accent-colored slot
+   tinted per resource type, instead of one generic warm glow for everything */
+function drawResourceNode(ctx,n,sx,sy){
+  ctx.save();
+  const bob = Math.sin(S.elapsed/500+n.id)*3;
+  const col = NODE_COLORS[n.type] || '255,241,190';
+  ctx.fillStyle='rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(sx,sy+15,16,4.5,0,0,Math.PI*2); ctx.fill();
+  const pulse = 0.85+0.15*Math.sin(S.elapsed/450+n.id*1.3);
+  const glow = ctx.createRadialGradient(sx,sy,2,sx,sy,28);
+  glow.addColorStop(0, `rgba(${col},${0.6*pulse})`);
+  glow.addColorStop(1, `rgba(${col},0)`);
+  ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(sx,sy,28,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=`rgba(${col},.3)`;
+  ctx.strokeStyle=`rgba(${col},.95)`; ctx.lineWidth=2.2;
+  ctx.beginPath(); ctx.roundRect(sx-16, sy-16, 32, 32, 9);
+  ctx.fill(); ctx.stroke();
+  ctx.font='30px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(RESOURCE_DEFS[n.type].emoji, sx, sy+bob);
+  ctx.restore();
+}
+
+function drawProp(ctx,p,sx,sy){
+  ctx.save(); ctx.translate(sx,sy); ctx.scale(p.flip*p.scale,p.scale);
+  const sway = Math.sin(S.elapsed/900 + sx*0.01)*2;
+  if(p.kind==='tree'){
+    ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0,5,17,4.5,0,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='rgba(20,14,8,.55)'; ctx.lineWidth=1.4;
+    // blocky trunk (voxel-ish rectangle, not a thin line)
+    ctx.fillStyle='#4a3320'; ctx.fillRect(-4,-8,8,17); ctx.strokeRect(-4,-8,8,17);
+    ctx.save(); ctx.translate(0,-8); ctx.rotate(sway*0.02);
+    // chunky layered canopy blocks for a blocky/Minecraft-ish silhouette
+    ctx.fillStyle='#2f5233';
+    ctx.beginPath(); ctx.moveTo(0,-46); ctx.lineTo(-23,3); ctx.lineTo(23,3); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#3d6b41';
+    ctx.beginPath(); ctx.moveTo(0,-34); ctx.lineTo(-18,-2); ctx.lineTo(18,-2); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#4d7d4f';
+    ctx.beginPath(); ctx.moveTo(0,-22); ctx.lineTo(-11,-4); ctx.lineTo(11,-4); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  } else if(p.kind==='bush'){
+    ctx.strokeStyle='rgba(20,14,8,.45)'; ctx.lineWidth=1.2;
+    ctx.fillStyle='#365c37'; ctx.beginPath(); ctx.arc(-7,0,11,0,Math.PI*2); ctx.arc(7,0,11,0,Math.PI*2); ctx.arc(0,-7,12,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  } else if(p.kind==='rock'){
+    ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0,9,17,5,0,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='rgba(20,18,14,.5)'; ctx.lineWidth=1.4;
+    ctx.fillStyle='#78725f'; ctx.beginPath(); ctx.moveTo(-19,7); ctx.lineTo(-9,-17); ctx.lineTo(12,-12); ctx.lineTo(19,7); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#8f8874'; ctx.beginPath(); ctx.moveTo(-9,-17); ctx.lineTo(2,-12); ctx.lineTo(-2,2); ctx.closePath(); ctx.fill();
+  } else if(p.kind==='pine'){
+    ctx.fillStyle='#3a2a20'; ctx.fillRect(-3,-2,6,14);
+    ctx.fillStyle='#26493a';
+    for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(0,-46+i*14); ctx.lineTo(-16+i*2,-14+i*14); ctx.lineTo(16-i*2,-14+i*14); ctx.closePath(); ctx.fill(); }
+  } else if(p.kind==='rubble'){
+    ctx.fillStyle='#4a4a4a'; ctx.fillRect(-14,-10,28,16);
+    ctx.fillStyle='#5c5c5c'; ctx.fillRect(-14,-14,12,8);
+    ctx.fillStyle='#33322f'; ctx.fillRect(-2,-16,6,20);
+  } else if(p.kind==='pillar'){
+    ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0,10,10,3,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#6b6a63'; ctx.fillRect(-7,-40,14,50);
+    ctx.fillStyle='#807f76'; ctx.fillRect(-9,-44,18,6);
+  } else if(p.kind==='pipe'){
+    ctx.fillStyle='#5a4a3a'; ctx.fillRect(-18,-4,36,10);
+    ctx.fillStyle='#c1483f'; ctx.fillRect(-18,-4,4,10); ctx.fillRect(14,-4,4,10);
+  } else if(p.kind==='crate'){
+    ctx.fillStyle='#6b4e2e'; ctx.fillRect(-12,-14,24,24);
+    ctx.strokeStyle='#3a2a17'; ctx.lineWidth=2; ctx.strokeRect(-12,-14,24,24);
+    ctx.beginPath(); ctx.moveTo(-12,-14); ctx.lineTo(12,10); ctx.moveTo(12,-14); ctx.lineTo(-12,10); ctx.stroke();
+  } else if(p.kind==='palm'){
+    ctx.strokeStyle='#7a5a30'; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(0,10); ctx.quadraticCurveTo(6,-16,2,-36); ctx.stroke();
+    ctx.fillStyle='#3d7a3f';
+    for(let i=0;i<5;i++){ const ang=-Math.PI/2 + (i-2)*0.5; ctx.save(); ctx.translate(2,-36); ctx.rotate(ang); ctx.beginPath(); ctx.ellipse(14,0,16,5,0,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+  } else if(p.kind==='shell'){
+    ctx.fillStyle='#e8dcc0'; ctx.beginPath(); ctx.arc(0,0,7,Math.PI,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawCaveMouth(ctx,sx,sy){
+  ctx.save();
+  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(sx,sy+16,24,6,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#4a4436';
+  ctx.beginPath(); ctx.ellipse(sx,sy,28,34,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(20,18,14,.6)'; ctx.lineWidth=2; ctx.stroke();
+  const glow = 0.5+0.15*Math.sin(S.elapsed/400);
+  const g = ctx.createRadialGradient(sx,sy+6,2,sx,sy+6,20);
+  g.addColorStop(0, `rgba(10,8,6,${0.95})`);
+  g.addColorStop(1, `rgba(10,8,6,0)`);
+  ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(sx,sy+6,18,24,0,0,Math.PI*2); ctx.fill();
+  ctx.font='22px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('⛰️', sx, sy-36);
+  ctx.restore();
+}
+function drawCaveExit(ctx,sx,sy){
+  ctx.save();
+  const glow = ctx.createRadialGradient(sx,sy,2,sx,sy,40);
+  glow.addColorStop(0,'rgba(255,241,190,.28)'); glow.addColorStop(1,'rgba(255,241,190,0)');
+  ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(sx,sy,40,0,Math.PI*2); ctx.fill();
+  ctx.font='36px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('🪜', sx, sy);
+  ctx.font='12px sans-serif';
+  ctx.fillStyle='#eee3c8'; ctx.fillText('ทางออก', sx, sy+26);
+  ctx.restore();
+}
+function drawFriend(ctx,f,sx,sy){
+  ctx.save();
+  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(sx,sy+22,16,5,0,0,Math.PI*2); ctx.fill();
+  if(!f.awake){
+    drawSilhouette(ctx, sx, sy, 0.55, 1, 0.5);
+    const glow = 0.5+0.5*Math.sin(S.elapsed/600+f.id);
+    ctx.save();
+    ctx.globalAlpha = 0.55*glow;
+    ctx.fillStyle = '#8fe08a';
+    ctx.beginPath(); ctx.arc(sx, sy-38, 9,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    ctx.font='16px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('💤', sx+16, sy-46);
+    ctx.font='11px sans-serif'; ctx.fillStyle='#cfe8c8';
+    ctx.fillText(f.name+' (หลับใหล)', sx, sy+30);
+  } else {
+    drawCharacter(ctx, sx, sy, 1, Math.sin(S.elapsed/700+f.id*3)>0.75, '#9a5a6a');
+    ctx.font='12px sans-serif'; ctx.textAlign='center';
+    ctx.fillStyle='#f2c14e'; ctx.fillText(f.name, sx, sy+30);
+  }
+  ctx.restore();
+}
+
+function render(){
+  wctx.clearRect(0,0,worldCanvas.width,worldCanvas.height);
+  fctx.clearRect(0,0,fxCanvas.width,fxCanvas.height);
+  if(!S.started) return;
+  const inCave = S.cave.active;
+  const f = dayFrac();
+  const isDay = !(f>NIGHT_START || f<0.06);
+
+  if(!inCave){
+    // biomes base + soft texture
+    for(const b of BIOMES){
+      const sx=b.x-S.cam.x, sy=b.y-S.cam.y;
+      if(sx>worldCanvas.width||sy>worldCanvas.height||sx+b.w<0||sy+b.h<0) continue;
+      const grad = wctx.createLinearGradient(sx,sy,sx,sy+b.h);
+      grad.addColorStop(0, lighten(b.color,28));
+      grad.addColorStop(1, lighten(b.color,6));
+      wctx.fillStyle=grad;
+      wctx.fillRect(sx, sy, b.w, b.h);
+    }
+    // deterministic speckle texture (cheap, viewport-only)
+    wctx.fillStyle='rgba(0,0,0,0.05)';
+    const startX = Math.floor(S.cam.x/38)*38, startY=Math.floor(S.cam.y/38)*38;
+    for(let gx=startX; gx<S.cam.x+worldCanvas.width; gx+=38){
+      for(let gy=startY; gy<S.cam.y+worldCanvas.height; gy+=38){
+        if(((gx*13+gy*7)%97)<18){ wctx.fillRect(gx-S.cam.x+((gx*31)%14), gy-S.cam.y+((gy*17)%14), 3, 3); }
+      }
+    }
+    // drifting cloud shadows
+    wctx.fillStyle='rgba(0,0,0,0.06)';
+    for(const c of CLOUDS){
+      const cx = ((c.x + S.elapsed*0.006*c.spd*0.06) % (MAP_W+400)) - 200;
+      const sx=cx-S.cam.x, sy=c.y-S.cam.y;
+      if(sx>-c.w && sx<worldCanvas.width+c.w){
+        wctx.beginPath(); wctx.ellipse(sx,sy,c.w*0.5,c.w*0.22,0,0,Math.PI*2); wctx.fill();
+      }
+    }
+  } else {
+    // dark rocky cave background
+    const grad = wctx.createLinearGradient(0,0,0,worldCanvas.height);
+    grad.addColorStop(0,'#231d16'); grad.addColorStop(1,'#0d0a07');
+    wctx.fillStyle=grad; wctx.fillRect(0,0,worldCanvas.width,worldCanvas.height);
+    wctx.fillStyle='rgba(255,255,255,0.035)';
+    const sX=Math.floor(S.cam.x/34)*34, sY=Math.floor(S.cam.y/34)*34;
+    for(let gx=sX; gx<S.cam.x+worldCanvas.width; gx+=34){
+      for(let gy=sY; gy<S.cam.y+worldCanvas.height; gy+=34){
+        if(((gx*17+gy*11)%89)<14){ wctx.fillRect(gx-S.cam.x+((gx*23)%12), gy-S.cam.y+((gy*19)%12), 3,3); }
+      }
+    }
+  }
+
+  // depth-sorted drawables
+  const drawables = [];
+  if(!inCave){
+    for(const p of PROPS){
+      const sx=p.x-S.cam.x, sy=p.y-S.cam.y;
+      if(sx<-60||sy<-80||sx>worldCanvas.width+60||sy>worldCanvas.height+60) continue;
+      drawables.push({y:p.y, draw:()=>drawProp(wctx,p,sx,sy)});
+    }
+    for(const ent of CAVE_ENTRANCES){
+      const sx=ent.x-S.cam.x, sy=ent.y-S.cam.y;
+      if(sx<-60||sy<-80||sx>worldCanvas.width+60||sy>worldCanvas.height+60) continue;
+      drawables.push({y:ent.y, draw:()=>drawCaveMouth(wctx,sx,sy)});
+    }
+    for(const fr of FRIENDS){
+      const sx=fr.x-S.cam.x, sy=fr.y-S.cam.y;
+      if(sx<-60||sy<-90||sx>worldCanvas.width+60||sy>worldCanvas.height+60) continue;
+      drawables.push({y:fr.y, draw:()=>drawFriend(wctx,fr,sx,sy)});
+    }
+    for(const n of S.nodes){
+      if(!n.active) continue;
+      const sx=n.x-S.cam.x, sy=n.y-S.cam.y;
+      if(sx<-56||sy<-56||sx>worldCanvas.width+56||sy>worldCanvas.height+56) continue;
+      drawables.push({y:n.y, draw:()=>drawResourceNode(wctx,n,sx,sy)});
+    }
+    const BUILD_EMOJI = {campfire:'',shelter:'⛺',crafttable:'🧰',exptable:'🧪',furnace_b:'🏺',lab:'🔬',factory:'🏭',sciencecore:'🏛️'};
+    for(const b of S.buildings){
+      const sx=b.x-S.cam.x, sy=b.y-S.cam.y;
+      drawables.push({y:b.y, draw:()=>{
+        wctx.fillStyle='rgba(0,0,0,.28)'; wctx.beginPath(); wctx.ellipse(sx,sy+14,18,5,0,0,Math.PI*2); wctx.fill();
+        if(b.type==='campfire'){ drawFire(wctx, sx, sy); }
+        else if(b.type==='sciencecore'){ drawScienceCore(wctx, sx, sy); }
+        else {
+          wctx.font='46px sans-serif'; wctx.textAlign='center'; wctx.textBaseline='middle';
+          wctx.fillText(BUILD_EMOJI[b.type]||'❔', sx, sy);
+        }
+      }});
+    }
+  } else {
+    for(const n of S.cave.nodes){
+      if(!n.active) continue;
+      const sx=n.x-S.cam.x, sy=n.y-S.cam.y;
+      if(sx<-56||sy<-56||sx>worldCanvas.width+56||sy>worldCanvas.height+56) continue;
+      drawables.push({y:n.y, draw:()=>drawResourceNode(wctx,n,sx,sy)});
+    }
+    const esx = CAVE_EXIT.x-S.cam.x, esy = CAVE_EXIT.y-S.cam.y;
+    drawables.push({y:CAVE_EXIT.y, draw:()=>drawCaveExit(wctx,esx,esy)});
+  }
+  drawables.push({y:S.player.y, draw:()=>drawCharacter(wctx, S.player.x-S.cam.x, S.player.y-S.cam.y, S.player.facing, S.player.moving, '#5a8a5f')});
+  drawables.sort((a,b)=>a.y-b.y);
+  drawables.forEach(d=>d.draw());
+
+  // rain overlay (surface weather only)
+  if(!inCave && (S.weather==='rain'||S.weather==='storm')){
+    fctx.strokeStyle='rgba(180,210,230,0.35)';
+    fctx.lineWidth=1;
+    const count = S.weather==='storm'?120:60;
+    for(let i=0;i<count;i++){
+      const rx=(i*97+ (S.elapsed*0.5))%fxCanvas.width;
+      const ry=(i*53+ (S.elapsed*0.9))%fxCanvas.height;
+      fctx.beginPath(); fctx.moveTo(rx,ry); fctx.lineTo(rx-4,ry+12); fctx.stroke();
+    }
+  }
+
+  // day/night color grading + darkness (kept lighter overall so the world stays readable)
+  let dark = 0;
+  if(!inCave){
+    if(f>NIGHT_START) dark = Math.min(0.52, (f-NIGHT_START)/(NIGHT_END-NIGHT_START)*0.52);
+    if(f<0.06) dark = Math.max(0, 0.52*(1-f/0.06));
+    if(S.weather==='storm') dark = Math.max(dark, 0.28);
+
+    // dawn/dusk warm tint
+    const dawn = Math.max(0, 1-Math.abs(f-0.03)/0.05);
+    const dusk = Math.max(0, 1-Math.abs(f-NIGHT_START)/0.05);
+    const warm = Math.max(dawn,dusk);
+    if(warm>0){ fctx.fillStyle=`rgba(255,150,80,${warm*0.16})`; fctx.fillRect(0,0,fxCanvas.width,fxCanvas.height); }
+    if(!isDay){ fctx.fillStyle='rgba(40,60,120,0.08)'; fctx.fillRect(0,0,fxCanvas.width,fxCanvas.height); }
+  } else {
+    dark = 0.72; // caves are always dim, lit only near the player
+  }
+
+  if(dark>0){
+    fctx.fillStyle = `rgba(5,8,16,${dark})`;
+    fctx.fillRect(0,0,fxCanvas.width,fxCanvas.height);
+    fctx.globalCompositeOperation='destination-out';
+    const glowSpots=[{x:S.player.x-S.cam.x,y:S.player.y-S.cam.y,r:inCave?125:100}];
+    if(!inCave){ for(const b of S.buildings){ if(b.type==='campfire') glowSpots.push({x:b.x-S.cam.x,y:b.y-S.cam.y,r:160+Math.sin(S.elapsed/150)*10}); } }
+    for(const g of glowSpots){
+      const grad=fctx.createRadialGradient(g.x,g.y,0,g.x,g.y,g.r);
+      grad.addColorStop(0,`rgba(0,0,0,${dark})`); grad.addColorStop(1,'rgba(0,0,0,0)');
+      fctx.fillStyle=grad;
+      fctx.beginPath(); fctx.arc(g.x,g.y,g.r,0,Math.PI*2); fctx.fill();
+    }
+    fctx.globalCompositeOperation='source-over';
+    // warm campfire tint on top
+    if(!inCave){
+      for(const b of S.buildings){
+        if(b.type!=='campfire') continue;
+        const gx=b.x-S.cam.x, gy=b.y-S.cam.y;
+        const grad=fctx.createRadialGradient(gx,gy,0,gx,gy,140);
+        grad.addColorStop(0,`rgba(255,150,60,${0.22*dark})`); grad.addColorStop(1,'rgba(255,150,60,0)');
+        fctx.fillStyle=grad; fctx.beginPath(); fctx.arc(gx,gy,140,0,Math.PI*2); fctx.fill();
+      }
+    } else {
+      // cool bluish glow around the player underground
+      const gx=S.player.x-S.cam.x, gy=S.player.y-S.cam.y;
+      const grad=fctx.createRadialGradient(gx,gy,0,gx,gy,120);
+      grad.addColorStop(0,`rgba(150,190,255,${0.14*dark})`); grad.addColorStop(1,'rgba(150,190,255,0)');
+      fctx.fillStyle=grad; fctx.beginPath(); fctx.arc(gx,gy,120,0,Math.PI*2); fctx.fill();
+    }
+  }
+
+  // vignette for atmosphere
+  const vg = wctx.createRadialGradient(worldCanvas.width/2,worldCanvas.height/2,worldCanvas.height*0.42,worldCanvas.width/2,worldCanvas.height/2,worldCanvas.height*0.8);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.13)');
+  fctx.fillStyle=vg; fctx.fillRect(0,0,fxCanvas.width,fxCanvas.height);
+}
+
+function drawFire(ctx,x,y){
+  const t=S.elapsed/1000;
+  ctx.save(); ctx.translate(x,y); ctx.scale(1.35,1.35);
+  ctx.fillStyle='#4a3a2a'; ctx.beginPath();
+  ctx.moveTo(-14,10); ctx.lineTo(-4,-2); ctx.lineTo(4,-2); ctx.lineTo(14,10); ctx.closePath(); ctx.fill();
+  const flick = Math.sin(t*8)*2 + Math.sin(t*13)*1.5;
+  const grad = ctx.createRadialGradient(0,-6,2,0,-6,26);
+  grad.addColorStop(0,'#fff2c0'); grad.addColorStop(0.4,'#f2c14e'); grad.addColorStop(0.75,'#e08a3e'); grad.addColorStop(1,'rgba(224,138,62,0)');
+  ctx.fillStyle=grad;
+  ctx.beginPath();
+  ctx.moveTo(0,10);
+  ctx.quadraticCurveTo(-13+flick*0.3,-2,-5,-16+flick);
+  ctx.quadraticCurveTo(0,-26-flick*0.5,4,-14);
+  ctx.quadraticCurveTo(13-flick*0.3,-4,0,10);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function drawScienceCore(ctx,x,y){
+  const t=S.elapsed/1000;
+  ctx.save(); ctx.translate(x,y); ctx.scale(1.3,1.3);
+  ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0,26,30,7,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#3a3f4a'; ctx.beginPath(); ctx.moveTo(-26,20); ctx.lineTo(-20,-10); ctx.lineTo(20,-10); ctx.lineTo(26,20); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#565f6e'; ctx.fillRect(-16,-30,32,22);
+  const glow = 0.5+0.5*Math.sin(t*2);
+  const grad = ctx.createRadialGradient(0,-24,2,0,-24,34);
+  grad.addColorStop(0,`rgba(120,200,255,${0.7*glow})`); grad.addColorStop(1,'rgba(120,200,255,0)');
+  ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(0,-24,34,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#dff3ff'; ctx.beginPath(); ctx.arc(0,-24,7,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+/* enable circuit puzzle trigger via a keyboard shortcut once electricity unlocked & near a build (simple flavor entry through tech menu) */
+document.getElementById('btnTechMenu').addEventListener('dblclick', ()=>{
+  if(S.unlockedTech.has('electricity')){
+    circuitState=[false,false,false]; renderCircuit(); checkCircuit(); showPanel('circuitPanel');
+  }
+});
+
+})();
+</script>
+</body>
+</html>
