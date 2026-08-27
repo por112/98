@@ -1940,5 +1940,19 @@ document.getElementById('btnTechMenu').addEventListener('dblclick', ()=>{
 
 })();
 </script>
+  <!-- โค้ดลงทะเบียนและเชื่อมต่อ PWA Service Worker -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('PWA Service Worker เชื่อมต่อสำเร็จ! Scope:', registration.scope);
+        })
+        .catch((error) => {
+          console.error('การเชื่อมต่อ PWA ล้มเหลว:', error);
+        });
+    });
+  }
+</script>
 </body>
 </html>
